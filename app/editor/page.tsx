@@ -68,7 +68,7 @@ export default function EditorPage() {
           return;
         }
         const { sha: newSha } = await r.json();
-        setSha(newSha);
+        setSha(newSha);  // v52+:更新 store 里的 sha,避免下次 auto-save 用 stale 值 → 409
         lastSaved.current = cur;
         setStatus(`✅ 已保存 ${new Date().toLocaleTimeString()}`);
         setSavingState('saved');
@@ -81,12 +81,44 @@ export default function EditorPage() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [frameConfigs, lang, layout, sha, setSha, setStatus]);
+    // v52+:从 deps 移除 sha(避免 sha 更新后再触发 useEffect → 死循环)
+  }, [frameConfigs, lang, layout, setSha, setStatus]);
 
   // 键盘快捷键
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) return;
+      const target = e.target as HTMLElement;
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
+      // Esc 键 → 取消选中(任何时候都生效,即使在输入框)
+      if (e.key === 'Escape') {
+        useEditor.getState().setSelected(null, null);
+        return;
+      }
+      // Ctrl+Shift+> / <  → 调字号(PPT 风格)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === '>' || e.key === '.')) {
+        e.preventDefault();
+        const s = useEditor.getState();
+        if (s.selectedFid && s.selectedEid) {
+          const el = s.frameConfigs[s.selectedFid]?.elements?.[s.selectedEid];
+          if (el && el.fontSize !== undefined) {
+            s.updateElement(s.selectedFid, s.selectedEid, 'fontSize', el.fontSize + 1);
+          }
+        }
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === '<' || e.key === ',')) {
+        e.preventDefault();
+        const s = useEditor.getState();
+        if (s.selectedFid && s.selectedEid) {
+          const el = s.frameConfigs[s.selectedFid]?.elements?.[s.selectedEid];
+          if (el && el.fontSize !== undefined) {
+            s.updateElement(s.selectedFid, s.selectedEid, 'fontSize', Math.max(1, el.fontSize - 1));
+          }
+        }
+        return;
+      }
+      // 编辑相关快捷键只在非输入框生效
+      if (isInput) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         useEditor.temporal.getState().undo();

@@ -42,14 +42,24 @@ export default function Element({ fid, eid, element, lang }: Props) {
     { pointer: { keys: false } },
   );
 
+  // 单独 onClick:在拖动不会触发(useDrag 内部 stopPropagation,只触发 mouseup 算 click)
+  // 这里做一个轻量 click handler:确保点元素能选中
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected(fid, eid);
+  };
+
   // Logo 类型(图片)
   if (element.type === 'logo') {
     return (
       <img
-        src={`/assets/${lang}/logo.png`}
+        src={`/api/assets/logo/${lang}/startrader_logo_official.png`}
         alt="logo"
         {...(bind() as any)}
-        className={`absolute cursor-move select-none ${isSelected ? 'outline-2 outline-red-500' : 'hover:outline hover:outline-blue-400 hover:outline-dashed'}`}
+        onClick={onClick}
+        className={`absolute cursor-move select-none border-2 ${
+          isSelected ? 'border-red-500 ring-2 ring-red-300' : 'border-transparent hover:border-blue-300 hover:border-dashed'
+        }`}
         style={{
           left: element.x * SCALE,
           top: element.y * SCALE,
@@ -71,8 +81,9 @@ export default function Element({ fid, eid, element, lang }: Props) {
   return (
     <div
       {...(bind() as any)}
-      className={`absolute cursor-move select-none flex items-end px-1.5 box-border ${
-        isSelected ? 'outline-2 outline-red-500' : 'hover:outline hover:outline-blue-400 hover:outline-dashed'
+      onClick={onClick}
+      className={`absolute cursor-move select-none flex items-end px-1.5 box-border border-2 ${
+        isSelected ? 'border-red-500 ring-2 ring-red-300' : 'border-transparent hover:border-blue-300 hover:border-dashed'
       }`}
       style={{
         left: element.x * SCALE,

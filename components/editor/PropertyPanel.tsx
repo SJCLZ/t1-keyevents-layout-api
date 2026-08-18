@@ -14,6 +14,7 @@ export default function PropertyPanel() {
     return (
       <div className="w-72 bg-white border-l border-gray-200 p-5">
         <div className="text-xs text-gray-400">点击元素查看属性</div>
+        <div className="mt-3 text-xs text-gray-300">快捷键:Ctrl+Shift+&gt; 增大字号</div>
       </div>
     );
   }
@@ -33,10 +34,13 @@ export default function PropertyPanel() {
       <Field label="高" value={element.h} onChange={(v) => onChange('h', v)} />
 
       {element.fontSize !== undefined && (
-        <>
-          <Field label="字号" value={element.fontSize} onChange={(v) => onChange('fontSize', v)} />
-          <Field label="字重" value={element.fontWeight || 300} onChange={(v) => onChange('fontWeight', v)} />
-        </>
+        <FontSizeField
+          value={element.fontSize}
+          onChange={(v) => onChange('fontSize', v)}
+        />
+      )}
+      {element.fontWeight !== undefined && (
+        <Field label="字重" value={element.fontWeight || 300} onChange={(v) => onChange('fontWeight', v)} />
       )}
       {element.line_pitch !== undefined && (
         <Field label="行距" value={element.line_pitch} onChange={(v) => onChange('line_pitch', v)} />
@@ -56,6 +60,7 @@ export default function PropertyPanel() {
   );
 }
 
+// 普通数值字段
 function Field({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center mb-2">
@@ -66,6 +71,41 @@ function Field({ label, value, onChange }: { label: string; value: number; onCha
         onChange={(e) => onChange(Number(e.target.value))}
         className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
       />
+    </div>
+  );
+}
+
+// v52+:字号字段(PPT 风格:± 按钮 + 数字输入,Shift + ± 跳 10)
+function FontSizeField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const adjust = (delta: number) => onChange(Math.max(1, Math.round(value + delta)));
+
+  return (
+    <div className="mb-2">
+      <label className="text-xs text-gray-500 block mb-1">字号</label>
+      <div className="flex items-stretch gap-0 border border-gray-300 rounded overflow-hidden focus-within:border-blue-500">
+        <button
+          type="button"
+          onClick={(e) => adjust(e.shiftKey ? -10 : -1)}
+          className="px-2 bg-gray-50 hover:bg-gray-200 text-gray-600 text-sm border-r border-gray-300"
+          title="减小 1(Shift: 减小 10)"
+        >
+          −
+        </button>
+        <input
+          type="number"
+          value={Math.round(value)}
+          onChange={(e) => onChange(Math.max(1, Number(e.target.value) || 1))}
+          className="flex-1 px-2 py-1 text-xs text-center focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={(e) => adjust(e.shiftKey ? 10 : 1)}
+          className="px-2 bg-gray-50 hover:bg-gray-200 text-gray-600 text-sm border-l border-gray-300"
+          title="增大 1(Shift: 增大 10)"
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ const LABELS: Record<string, string> = {
   t042: 'outro',
 };
 
-const SCALE = 360 / 1080;  // 缩放
+const SCALE = 360 / 1080;
 
 interface Props {
   fid: string;
@@ -25,6 +25,7 @@ export default function Frame({ fid, showingRef }: Props) {
   const lang = useEditor((s) => s.lang);
   const layout = useEditor((s) => s.layout);
   const elements = useEditor((s) => s.frameConfigs[fid]?.elements || {});
+  const setSelected = useEditor((s) => s.setSelected);
 
   if (!layout) return null;
   const videoSrc = layout.video_src;
@@ -34,8 +35,9 @@ export default function Frame({ fid, showingRef }: Props) {
     <div
       className="relative w-[360px] h-[640px] bg-[#061540] rounded-md overflow-hidden border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer"
       data-fid={fid}
+      onClick={() => setSelected(fid, '')}
     >
-      <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 bg-black/60 backdrop-blur text-white text-[10px] rounded font-medium">
+      <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 bg-black/60 backdrop-blur text-white text-[10px] rounded font-medium pointer-events-none">
         {fid} · {LABELS[fid] || ''}
       </div>
 
