@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AR 模板无线画布编辑器 (v48)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&family=Tajawal:wght@300;400;500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Prompt:wght@300;400;600&family=Mukta:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, sans-serif; background: #0a0a0a; color: #e0e0e0; overflow: hidden; }
+  #toolbar { position: fixed; top: 0; left: 0; right: 0; height: 48px; background: #2a2a2a; display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 1000; border-bottom: 1px solid #444; }
+  #toolbar button { padding: 6px 12px; background: #4a9eff; color: #fff; border: 0; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  #toolbar button:hover { background: #3a8eef; }
+  #toolbar button.secondary { background: #555; }
+  #toolbar button.secondary:hover { background: #666; }
+  #toolbar button.active { background: #ff8c00; box-shadow: 0 0 8px rgba(255,140,0,0.6); }
+  #toolbar span { color: #999; font-size: 12px; }
+  #canvas-viewport { position: fixed; top: 48px; left: 0; right: 0; bottom: 0; overflow: hidden; background: #0a0a0a; cursor: grab; }
+  #canvas-viewport.panning { cursor: grabbing; }
+  #canvas-world { position: absolute; top: 0; left: 0; width: 10000px; height: 10000px; transform-origin: 0 0; pointer-events: auto; }
+  .frame-card { position: absolute; width: 1080px; height: 1920px; background: #061540; border: 1px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; }
+  .frame-card.selected { border: 2px solid #4a9eff; }
+  .frame-card .frame-label { position: absolute; top: -28px; left: 0; color: #fff; background: #2a2a2a; padding: 4px 12px; border-radius: 4px; font-size: 12px; z-index: 10; }
+  .frame-card .frame-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .el { position: absolute; border: 2px solid transparent; cursor: move; user-select: none; box-sizing: border-box; }
+  .el:hover { border-color: #4a9eff; }
+  .el.selected { border-color: #ff4a4a; }
+  .el .lbl { position: absolute; top: -22px; left: 0; background: #ff4a4a; color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 3px; white-space: nowrap; pointer-events: none; z-index: 10; }
+  .handle { position: absolute; width: 12px; height: 12px; background: #4a9eff; border: 2px solid #fff; border-radius: 2px; z-index: 11; }
+  .handle.nw { top: -7px; left: -7px; cursor: nwse-resize; }
+  .handle.ne { top: -7px; right: -7px; cursor: nesw-resize; }
+  .handle.sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+  .handle.se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+  #panel { position: fixed; top: 48px; right: 0; bottom: 0; width: 320px; background: #2a2a2a; border-left: 1px solid #444; padding: 16px; overflow-y: auto; z-index: 998; }
+  #panel h3 { margin: 0 0 12px 0; font-size: 14px; color: #fff; }
+  #panel .row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; }
+  #panel label { width: 80px; color: #aaa; }
+  #panel input[type="number"], #panel input[type="text"] { flex: 1; padding: 4px 6px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 3px; font-size: 12px; }
+  #panel .group { border-top: 1px solid #444; padding-top: 12px; margin-top: 12px; }
+  #status { position: fixed; bottom: 16px; right: 336px; background: #2a2a2a; color: #0f0; padding: 6px 12px; border-radius: 4px; font-size: 12px; z-index: 1001; opacity: 0; transition: opacity 0.3s; }
+  #status.show { opacity: 1; }
+  #zoom-info { position: fixed; bottom: 16px; left: 16px; background: #2a2a2a; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; z-index: 1001; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span>T1_KeyEvents 模板无线画布编辑器 (v50 · 多语言切换)</span>
+  <label style="color:#fff;font-size:13px;display:flex;align-items:center;gap:4px">语言:
+    <select id="lang-select" style="padding:4px 8px;background:#1a1a1a;color:#fff;border:1px solid #444;border-radius:3px">
+      <option value="ar">AR 阿拉伯语 (RTL)</option>
+      <option value="sp">SP 西班牙语 (LTR)</option>
+      <option value="en">EN 英语 (placeholder)</option>
+      <option value="ja">JA 日语 (placeholder)</option>
+      <option value="kr">KR 韩语 (placeholder)</option>
+      <option value="th">TH 泰语 (placeholder)</option>
+      <option value="vi">VI 越南语 (placeholder)</option>
+      <option value="cn">CN 简体中文 (placeholder)</option>
+      <option value="hi">HI 印地语 (placeholder)</option>
+    </select>
+  </label>
+  <button id="btn-save">保存到 localStorage</button>
+  <button id="btn-reset" class="secondary">清除 localStorage (恢复默认)</button>
+  <button id="btn-toggle-bg" class="secondary">显示原版参考</button>
+  <button id="btn-format-brush" class="secondary">🎨 格式刷</button>
+  <button id="btn-ai-align">📐 自动应用 chdiff</button>
+  <button id="btn-import-json" class="secondary">📋 导入 sample JSON</button>
+  <button id="btn-load-sample" class="secondary">⚡ 加载 sample (当前语言)</button>
+  <button id="btn-export">📥 导出 layout JSON</button>
+  <span>操作:空白拖=平移 | 元素拖=移动 | 拉角=缩放 | Space+拖=强制平移 | Cmd+滚轮=缩放</span>
+</div>
+
+<div id="canvas-viewport">
+  <div id="canvas-world"></div>
+</div>
+
+<div id="panel">
+  <h3>选中元素属性</h3>
+  <div id="props">点击元素查看属性</div>
+  <div class="group">
+    <h3>输入源 (Excel 映射)</h3>
+    <div id="source">点击元素查看来源</div>
+  </div>
+  <div class="group">
+    <h3>使用流程 (v48)</h3>
+    <div style="font-size:11px;color:#aaa;line-height:1.6">
+      <b>第一步</b>:跑命令注入 chdiff (绕过 CORS)<br>
+      <code style="color:#7af">bash tools/auto_align_editor.sh --inject-html</code><br>
+      → 浏览器自动打开临时 HTML,自动应用 chdiff<br>
+      <br>
+      <b>第二步</b>:在画布上 review / 微调<br>
+      → 拖元素、改 x/y/w/h<br>
+      → 点"保存到 localStorage"<br>
+      <br>
+      <b>第三步</b>:导出 → 写 layout_ar.json<br>
+      → 点"导出 layout_ar.json",复制到模板文件<br>
+      → 重渲染: <code style="color:#7af">cd remotion && npx remotion render ...</code>
+    </div>
+  </div>
+</div>
+
+<div id="zoom-info">缩放 30%</div>
+<div id="status"></div>
+
+<script>
+// ===== 默认配置(7 帧) =====
+const DEFAULT_CONFIGS = {
+  t002: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t002.000.png',
+    elements: {
+      logo:     { x: 393, y: 380, w: 326, h: 100, type: 'logo', text: '' },
+      title1:   { x: 740, y: 559, w: 194, h: 100, type: 'title', text: 'أهم', fontSize: 90, fontWeight: 300 },
+      title2:   { x: 595, y: 660, w: 339, h: 159, type: 'title', text: 'أحدث', fontSize: 90, fontWeight: 300 },
+      title3:   { x: 526, y: 820, w: 401, h: 189, type: 'title', text: 'الأسبوع', fontSize: 90, fontWeight: 300 },
+      subtitle: { x: 603, y: 1093, w: 335, h: 58, type: 'subtitle', text: '3 أغسطس – 7 أغسطس', fontSize: 50, fontWeight: 700 }
+    }
+  },
+  t004: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t004.000.png',
+    elements: {
+      header:   { x: 152, y: 305, w: 777, h: 44, type: 'header', text: 'أهم أحداث السوق', fontSize: 38, fontWeight: 200 },
+      period:   { x: 156, y: 365, w: 777, h: 26, type: 'header', text: '31 - 27 يوليو', fontSize: 24, fontWeight: 250 },
+      weekday:  { x: 152, y: 495, w: 807, h: 80, type: 'date', text: 'الاثنين', fontSize: 60, fontWeight: 300 },
+      date:     { x: 152, y: 568, w: 807, h: 192, type: 'date', text: '27 يوليو', fontSize: 110, fontWeight: 400 },
+      body:     { x: 240, y: 750, w: 686, h: 162, type: 'body', text: 'من المتوقع أن ترتفع طلبات السلع المعمرة في الولايات المتحدة بنسبة 1.6% خلال شهر يونيو', fontSize: 50, fontWeight: 300 }
+    }
+  },
+  t011: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t011.000.png',
+    elements: {
+      header:   { x: 152, y: 305, w: 777, h: 44, type: 'header', text: 'أهم أحداث السوق', fontSize: 38, fontWeight: 200 },
+      period:   { x: 156, y: 365, w: 777, h: 26, type: 'header', text: '31 - 27 يوليو', fontSize: 24, fontWeight: 250 },
+      weekday:  { x: 152, y: 495, w: 807, h: 80, type: 'date', text: 'الثلاثاء', fontSize: 60, fontWeight: 300 },
+      date:     { x: 152, y: 568, w: 807, h: 192, type: 'date', text: '28 يوليو', fontSize: 110, fontWeight: 400 },
+      body:     { x: 240, y: 750, w: 686, h: 162, type: 'body', text: 'من المتوقع أن يرتفع مؤشر ثقة المستهلك في الولايات المتحدة من 91.2 إلى 92.1.', fontSize: 50, fontWeight: 300 }
+    }
+  },
+  t018: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t018.000.png',
+    elements: {
+      header:   { x: 152, y: 305, w: 777, h: 44, type: 'header', text: 'أهم أحداث السوق', fontSize: 38, fontWeight: 200 },
+      period:   { x: 156, y: 365, w: 777, h: 26, type: 'header', text: '31 - 27 يوليو', fontSize: 24, fontWeight: 250 },
+      weekday:  { x: 152, y: 495, w: 807, h: 80, type: 'date', text: 'الأربعاء', fontSize: 60, fontWeight: 300 },
+      date:     { x: 152, y: 568, w: 807, h: 192, type: 'date', text: '29 يوليو', fontSize: 110, fontWeight: 400 },
+      body:     { x: 160, y: 750, w: 770, h: 200, type: 'body', text: 'من المتوقع أن يُبقي الاحتياطي الفيدرالي الأمريكي أسعار الفائدة دون تغيير عند 3.75%', fontSize: 50, fontWeight: 300 }
+    }
+  },
+  t025: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t025.000.png',
+    elements: {
+      header:   { x: 152, y: 305, w: 777, h: 44, type: 'header', text: 'أهم أحداث السوق', fontSize: 38, fontWeight: 200 },
+      period:   { x: 156, y: 365, w: 777, h: 26, type: 'header', text: '31 - 27 يوليو', fontSize: 24, fontWeight: 250 },
+      weekday:  { x: 152, y: 495, w: 807, h: 80, type: 'date', text: 'الخميس', fontSize: 60, fontWeight: 300 },
+      date:     { x: 152, y: 568, w: 807, h: 192, type: 'date', text: '30 يوليو', fontSize: 110, fontWeight: 400 },
+      body:     { x: 160, y: 750, w: 770, h: 200, type: 'body', text: 'من المتوقع أن يتباطأ مؤشر أسعار المنتجين 0.1% على أساس شهري، مقارنة بـ 0.3% في الشهر السابق.', fontSize: 50, fontWeight: 300 }
+    }
+  },
+  t032: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t032.000.png',
+    elements: {
+      header:   { x: 152, y: 305, w: 777, h: 44, type: 'header', text: 'أهم أحداث السوق', fontSize: 38, fontWeight: 200 },
+      period:   { x: 156, y: 365, w: 777, h: 26, type: 'header', text: '31 - 27 يوليو', fontSize: 24, fontWeight: 250 },
+      weekday:  { x: 152, y: 495, w: 807, h: 80, type: 'date', text: 'الجمعة', fontSize: 60, fontWeight: 300 },
+      date:     { x: 152, y: 568, w: 807, h: 192, type: 'date', text: '31 يوليو', fontSize: 110, fontWeight: 400 },
+      body:     { x: 200, y: 750, w: 740, h: 100, type: 'body', text: 'من المتوقع أن يُبقي بنك اليابان سعر الفائدة دون تغيير عند 1%.', fontSize: 50, fontWeight: 300 }
+    }
+  },
+  t042: {
+    bg: '../../outputs/verify_ar_frames/user_gt/t042.000.png',
+    elements: {
+      headline1: { x: 160, y: 560, w: 760, h: 160, type: 'outro', text: 'تابع آخر التحديثات.', fontSize: 80, fontWeight: 300 },
+      headline2: { x: 200, y: 730, w: 720, h: 160, type: 'outro', text: 'لا تفوّت تحركات السوق.', fontSize: 80, fontWeight: 300 },
+      subline1:  { x: 200, y: 950, w: 720, h: 80, type: 'outro', text: 'لمزيد من التفاصيل،', fontSize: 50, fontWeight: 300 },
+      subline2:  { x: 160, y: 1040, w: 760, h: 80, type: 'outro', text: 'تابعنا على وسائل التواصل الاجتماعي.', fontSize: 50, fontWeight: 300 }
+    }
+  }
+};
+
+// ===== v50: 多语言 layouts (fetch 加载) =====
+// DEFAULT_CONFIGS 作为 AR 兜底(同步初始化);异步 fetch layouts/${lang}.json 覆盖
+const LAYOUTS_DIR = (location.pathname.includes('/outputs/auto_align_editor/') ? '../' : '') + 'layouts/';
+const LAYOUT_FILES = {
+  ar: 'ar.json',
+  sp: 'sp.json',
+  en: 'en.json', ja: 'ja.json', kr: 'kr.json', th: 'th.json', vi: 'vi.json', cn: 'cn.json', hi: 'hi.json'
+};
+// v51+:API 模式 — Vercel Next.js API 转发 GitHub Contents API
+// 优先级:localStorage 'layout-api-base' > window.location.origin (同源) > '' (本地文件)
+// 同源模式:Vercel 部署后自动连后端;file:// 本地模式:自动空
+const _savedBase = (typeof localStorage !== 'undefined' && localStorage.getItem('layout-api-base')) || '';
+const _originBase = (typeof window !== 'undefined' && window.location.protocol !== 'file:' && window.location.host)
+  ? window.location.origin : '';
+const API_BASE = _savedBase || _originBase;
+let currentLang = 'ar';
+let currentLayoutData = null;  // 当前 fetch 到的 layout JSON(用于导出)
+let currentSha = null;  // v51+:GT 文件的 sha(用于 PUT 乐观锁)
+
+async function fetchLayout(lang) {
+  if (API_BASE) {
+    // v51+:从 Vercel API 读
+    try {
+      const resp = await fetch(`${API_BASE}/api/layouts/${lang}`);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      currentSha = resp.headers.get('etag')?.replace(/^"|"$/g, '') || null;
+      return data;
+    } catch (e) { console.warn('fetchLayout via API failed:', e); return null; }
+  }
+  // 本地模式:从 layouts/ 读
+  const fname = LAYOUT_FILES[lang];
+  if (!fname) return null;
+  try {
+    const resp = await fetch(LAYOUTS_DIR + fname);
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch (e) {
+    console.warn(`fetchLayout(${lang}) failed:`, e);
+    return null;
+  }
+}
+
+// v50+:路径根据启动方式自动适配
+// - tools/editor/ 下从项目根 (04_parameterized_video/) 启动 → 相对路径 remotion/outputs
+// - outputs/auto_align_editor/ 下启动 → 相对路径 ../../remotion/../../outputs
+const IS_EXPORTED_EDITOR = location.pathname.includes('/outputs/auto_align_editor/');
+const PATH_PREFIX = IS_EXPORTED_EDITOR ? '../../' : '';
+const REMOTION_PUBLIC = `${PATH_PREFIX}remotion/public`;
+const OUTPUTS_ROOT = `${PATH_PREFIX}outputs`;
+const VERIFY_ROOT = IS_EXPORTED_EDITOR
+  ? '../verify_ar_frames/t1-ar-aligned'
+  : `${OUTPUTS_ROOT}/verify_ar_frames/t1-ar-aligned`;
+// v50+:verify_ar_frames 路径实际不存在,统一用 FALLBACK_BG
+const previewPath = (kind, fid) => FALLBACK_BG;
+
+// 通用 fallback 背景图(verify_ar_frames/t1-ar-aligned 路径不存在时用)
+const FALLBACK_BG = `${OUTPUTS_ROOT}/T1_key_events/gt_frames/background.png`;
+
+// 把 layouts JSON 转成 frameConfigs 格式
+// v50+:运行时修路径 — 去掉 ../../ 前缀,适配 server root 在 04_parameterized_video/
+function fixBgPath(p) {
+  if (!p) return '';
+  if (IS_EXPORTED_EDITOR) return p;
+  // 把 '../../outputs/...' 改成 'outputs/...'
+  return p.replace(/^\.\.\/\.\.\//, '');
+}
+
+function layoutToFrameConfigs(layout) {
+  const cfg = {};
+  // v50+:video_src 模板背景 + gtFramePath 原版截图(各语言独立)
+  const videoSrc = fixBgPath(layout.video_src) || '';
+  Object.entries(layout.frames).forEach(([fid, frame]) => {
+    const bg = fixBgPath(frame.bg_path) || FALLBACK_BG;
+    const refBg = fixBgPath(frame.reference_bg_path) || bg;
+    const gtFrame = fixBgPath(frame.gt_frame_path) || FALLBACK_BG;
+    cfg[fid] = {
+      bg,
+      referenceBg: refBg,
+      videoSrc,
+      gtFramePath: gtFrame,
+      label: frame.label || fid,
+      elements: frame.elements || {}
+    };
+  });
+  return cfg;
+}
+
+// (路径常量已移到上方 fixBgPath 之前定义,避免 TDZ 错误)
+
+function setCurrentTemplateSnapshot(fid, elements) {
+  DEFAULT_CONFIGS[fid].bg = previewPath('render', fid);
+  DEFAULT_CONFIGS[fid].referenceBg = previewPath('gt', fid);
+  DEFAULT_CONFIGS[fid].elements = elements;
+}
+
+const cardElements = (weekday, date, body) => ({
+  header:  { x: 648, y: 308, w: 277, h: 44, type: 'header', text: 'أهم أحداث السوق', fontSize: 38, fontWeight: 300 },
+  period:  { x: 785, y: 366, w: 141, h: 26, type: 'header', text: '31 - 27 يوليو', fontSize: 24, fontWeight: 300 },
+  weekday: { x: 700, y: 536, w: 259, h: 70, type: 'date', text: weekday, fontSize: 50, fontWeight: 300 },
+  date:    { x: 360, y: 568, w: 599, h: 140, type: 'date', text: date, fontSize: 110, fontWeight: 400 },
+  body:    { x: 220, y: 770, w: 710, h: 255, type: 'body', text: body, fontSize: 63, fontWeight: 300 }
+});
+
+setCurrentTemplateSnapshot('t002', {
+  logo:     { x: 393, y: 380, w: 326, h: 100, type: 'logo', text: '' },
+  title1:   { x: 740, y: 559, w: 194, h: 101, type: 'title', text: 'أهم', fontSize: 90, fontWeight: 300 },
+  title2:   { x: 595, y: 660, w: 339, h: 160, type: 'title', text: 'أحداث', fontSize: 90, fontWeight: 300 },
+  title3:   { x: 526, y: 820, w: 401, h: 190, type: 'title', text: 'الأسبوع', fontSize: 90, fontWeight: 300 },
+  subtitle: { x: 603, y: 1093, w: 335, h: 59, type: 'subtitle', text: '31 - 27 يوليو', fontSize: 50, fontWeight: 700 }
+});
+setCurrentTemplateSnapshot('t004', cardElements('الاثنين', '27 يوليو', 'من المتوقع أن ترتفع طلبات السلع المعمرة في الولايات المتحدة بنسبة 1.6% خلال شهر يونيو'));
+setCurrentTemplateSnapshot('t011', cardElements('الثلاثاء', '28 يوليو', 'من المتوقع أن يرتفع مؤشر ثقة المستهلك في الولايات المتحدة من 91.2 إلى 92.1.'));
+setCurrentTemplateSnapshot('t018', cardElements('الأربعاء', '29 يوليو', 'من المتوقع أن يُبقي الاحتياطي الفيدرالي الأمريكي أسعار الفائدة دون تغيير عند 3.75%'));
+setCurrentTemplateSnapshot('t025', cardElements('الخميس', '30 يوليو', 'من المتوقع أن يتباطأ مؤشر أسعار المنتجين %0.1 على أساس شهري، مقارنة بـ 0.3% في الشهر السابق.'));
+setCurrentTemplateSnapshot('t032', cardElements('الجمعة', '31 يوليو', 'من المتوقع أن يُبقي بنك اليابان سعر الفائدة دون تغيير عند 1%.'));
+setCurrentTemplateSnapshot('t042', {
+  headline1: { x: 160, y: 480, w: 760, h: 130, type: 'outro', text: 'ابق على اطلاع.', fontSize: 108, fontWeight: 300 },
+  headline2: { x: 160, y: 610, w: 760, h: 130, type: 'outro', text: 'ابق في المقدمة.', fontSize: 108, fontWeight: 300 },
+  subline1:  { x: 160, y: 770, w: 760, h: 70, type: 'outro', text: 'للمزيد من تحديثات الأسواق،', fontSize: 52, fontWeight: 300 },
+  subline2:  { x: 160, y: 840, w: 760, h: 70, type: 'outro', text: 'تابعونا على مواقع التواصل الاجتماعي.', fontSize: 52, fontWeight: 300 },
+  url:       { x: 160, y: 945, w: 760, h: 50, type: 'outro', text: 'startrader.com', fontSize: 32, fontWeight: 400 }
+});
+
+const FRAME_LABELS = { t002: 't002 - intro (首页)', t004: 't004 - card 1', t011: 't011 - card 2', t018: 't018 - card 3', t025: 't025 - card 4', t032: 't032 - card 5', t042: 't042 - outro' };
+
+const SOURCE_MAP = {
+  'header': { key: 'header_title', row: 0, desc: '卡头栏目名' },
+  'period': { key: 'period_start + period_end', row: '2-3', desc: '周期起止日期' },
+  'weekday': { key: 'events[card_index].date', row: '17+', desc: '周几' },
+  'date': { key: 'events[card_index].date', row: '17+', desc: '日期' },
+  'body': { key: 'events[card_index].body', row: '17+', desc: '事件正文' },
+  'headline1': { key: 'outro_headline_l1', row: 8, desc: 'Outro 主标 1' },
+  'headline2': { key: 'outro_headline_l2', row: 9, desc: 'Outro 主标 2' },
+  'subline1': { key: 'outro_subline_l1', row: 10, desc: 'Outro 副标 1' },
+  'subline2': { key: 'outro_subline_l2', row: 11, desc: 'Outro 副标 2' },
+  'outro_url': { key: 'outro_url', row: 12, desc: 'Outro 网址' },
+  'disclaimer_l1': { key: 'disclaimer_l1', row: 13, desc: '底 1 风险' },
+  'disclaimer_l2': { key: 'disclaimer_l2', row: 14, desc: '底 2 风险' },
+  'logo': { key: 'asset', row: null, desc: 'Logo 资源文件' },
+  'title1': { key: 'intro_title_l1', row: 5, desc: 'Intro 行 1' },
+  'title2': { key: 'intro_title_l2', row: 6, desc: 'Intro 行 2' },
+  'title3': { key: 'intro_title_l3', row: 7, desc: 'Intro 行 3' },
+  'subtitle': { key: 'period_start - period_end', row: '2-3', desc: 'Intro 副标(周期日期)' }
+};
+
+// ===== localStorage 持久化(per-language,避免跨语言污染) =====
+const STORAGE_KEY = () => `t1_editor_v1_${currentLang}`;
+let frameConfigs;
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY());
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    // 用保存的数据覆盖默认
+    frameConfigs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
+    Object.entries(saved).forEach(([fid, els]) => {
+      if (frameConfigs[fid]) {
+        Object.entries(els).forEach(([eid, pos]) => {
+          if (frameConfigs[fid].elements[eid]) {
+            Object.assign(frameConfigs[fid].elements[eid], pos);
+          }
+        });
+      }
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+function saveToStorage() {
+  const data = {};
+  Object.entries(frameConfigs).forEach(([fid, cfg]) => {
+    data[fid] = {};
+    Object.entries(cfg.elements).forEach(([eid, box]) => {
+      data[fid][eid] = { x: box.x, y: box.y, w: box.w, h: box.h, fontSize: box.fontSize, fontWeight: box.fontWeight, line_pitch: box.line_pitch, text: box.text };
+    });
+  });
+  localStorage.setItem(STORAGE_KEY(), JSON.stringify(data));
+  showStatus(`已保存 ${currentLang} 配置到 localStorage`);
+}
+
+function clearStorage() {
+  localStorage.removeItem(STORAGE_KEY());
+  // v50:用当前语言 layout 数据重建(不用 DEFAULT_CONFIGS,因为它是 AR 兜底,SP 切回来会错位)
+  if (currentLayoutData) {
+    frameConfigs = layoutToFrameConfigs(currentLayoutData);
+    rebuildFromLayout(currentLayoutData);
+  } else {
+    frameConfigs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
+  }
+  showStatus(`已清除 ${currentLang} 配置`);
+}
+
+// 加载
+frameConfigs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
+loadFromStorage();
+
+// ===== 渲染 =====
+const viewport = document.getElementById('canvas-viewport');
+const world = document.getElementById('canvas-world');
+const status = document.getElementById('status');
+const zoomInfo = document.getElementById('zoom-info');
+
+let viewState = { x: 0, y: 0, scale: 0.3 };
+let selected = null;
+let selectedFrame = null;
+let cardNodes = {};
+let showingReference = false;
+
+function refreshBackgrounds() {
+  Object.entries(cardNodes).forEach(([fid, node]) => {
+    const card = node.card;
+    const video = card.querySelector('.frame-bg');
+    const gtImg = card.querySelector('.frame-bg-gt');
+    if (!video || !gtImg) return;
+    if (showingReference) {
+      // 显示原版参考 GT 静态截图(各语言独立)
+      video.style.display = 'none';
+      gtImg.style.display = 'block';
+    } else {
+      video.style.display = 'block';
+      gtImg.style.display = 'none';
+    }
+  });
+  document.getElementById('btn-toggle-bg').textContent = showingReference
+    ? '显示当前渲染'
+    : '显示原版参考';
+}
+
+function applyView() {
+  world.style.transform = `translate(${viewState.x}px, ${viewState.y}px) scale(${viewState.scale})`;
+  zoomInfo.textContent = `缩放 ${(viewState.scale*100).toFixed(0)}% | 平移 (${Math.round(viewState.x)}, ${Math.round(viewState.y)})`;
+}
+
+function handleHTML() {
+  return '<div class="handle nw" data-h="nw"></div><div class="handle ne" data-h="ne"></div><div class="handle sw" data-h="sw"></div><div class="handle se" data-h="se"></div><div class="handle n" data-h="n"></div><div class="handle s" data-h="s"></div><div class="handle w" data-h="w"></div><div class="handle e" data-h="e"></div>';
+}
+
+function createFrameCard(fid, x, y) {
+  const cfg = frameConfigs[fid];
+  const card = document.createElement('div');
+  card.className = 'frame-card';
+  card.style.left = x + 'px';
+  card.style.top = y + 'px';
+  card.dataset.fid = fid;
+  // v50+:用 <video> 加载视频背景(mp4,muted/autoplay/loop/playsinline)
+// v50+:GT 原版参考用 <img> 加载静态截图(方便逐像素对比新旧版)
+  // 默认隐藏 video,显示 img;切回时反过来
+  card.innerHTML = `<video class="frame-bg" src="${cfg.videoSrc || FALLBACK_BG}" muted autoplay loop playsinline></video><img class="frame-bg-gt" src="${cfg.gtFramePath || FALLBACK_BG}" loading="lazy" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover"><div class="frame-label">${FRAME_LABELS[fid]}</div>`;
+  world.appendChild(card);
+  const elements = {};
+  Object.entries(cfg.elements).forEach(([eid, box]) => {
+    const el = createElementNode(fid, eid, box);
+    card.appendChild(el);
+    elements[eid] = el;
+  });
+  return { card, elements };
+}
+
+function createElementNode(fid, eid, box) {
+  const el = document.createElement('div');
+  el.className = 'el';
+  el.dataset.fid = fid;
+  el.dataset.id = eid;
+  el.dataset.type = box.type;
+  el.style.left = box.x + 'px';
+  el.style.top = box.y + 'px';
+  el.style.width = box.w + 'px';
+  el.style.height = box.h + 'px';
+  if (box.type === 'logo') {
+    // v50+:用官方 logo + object-fit:fill(等价 SVG preserveAspectRatio="none" 拉满 ink 框)
+    el.innerHTML = `<img src="remotion/public/startrader_logo_official.png" style="width:100%;height:100%;pointer-events:none;object-fit:fill"><div class="lbl">${eid}</div>` + handleHTML();
+  } else {
+    const color = box.type === 'date' || box.type === 'subtitle' ? '#6590D7' : '#fff';
+    const fs = box.fontSize || 50;
+    const fw = box.fontWeight || 300;
+    // v50+:字体从当前 layouts JSON 读(默认 Tajawal AR 兜底)
+    const fontFamily = (currentLayoutData && currentLayoutData.font_family) || 'Tajawal, sans-serif';
+    const textDir = (currentLayoutData && currentLayoutData.text_direction) || 'rtl';
+    const textAlign = textDir === 'rtl' ? 'right' : 'left';
+    const justifyContent = textDir === 'rtl' ? 'flex-end' : 'flex-start';
+    // 行间距像素:多行元素可指定,默认 fontSize*1.2(body 类)
+    const lp = (box.line_pitch !== undefined) ? box.line_pitch : (box.type === 'body' || box.type === 'disclaimer' ? fs * 1.2 : fs * 1.0);
+    const lh = (lp / fs).toFixed(2);
+    el.innerHTML = `<div style="font-size:${fs}px;font-weight:${fw};color:${color};font-family:${fontFamily};line-height:${lh};width:100%;text-align:${textAlign};display:flex;align-items:flex-end;justify-content:${justifyContent};padding:0 10px;box-sizing:border-box">${box.text || ''}</div><div class="lbl">${eid}: ${(box.text || '').substring(0, 15)}</div>` + handleHTML();
+  }
+  attachHandlers(el);
+  return el;
+}
+
+function attachHandlers(el) {
+  el.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('handle')) {
+      startResize(e, el, e.target.dataset.h);
+    } else {
+      startDrag(e, el);
+    }
+    select(el);
+    e.stopPropagation();
+  });
+}
+
+function startDrag(e, el) {
+  e.preventDefault();
+  const startX = e.clientX, startY = e.clientY;
+  const origX = parseInt(el.style.left), origY = parseInt(el.style.top);
+  function onMove(e) {
+    const dx = (e.clientX - startX) / viewState.scale;
+    const dy = (e.clientY - startY) / viewState.scale;
+    el.style.left = (origX + dx) + 'px';
+    el.style.top = (origY + dy) + 'px';
+    if (selected === el) showProps(el);
+  }
+  function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function startResize(e, el, handle) {
+  e.preventDefault();
+  e.stopPropagation();
+  const startX = e.clientX, startY = e.clientY;
+  const ox = parseInt(el.style.left), oy = parseInt(el.style.top);
+  const ow = parseInt(el.style.width), oh = parseInt(el.style.height);
+  function onMove(e) {
+    const dx = (e.clientX - startX) / viewState.scale;
+    const dy = (e.clientY - startY) / viewState.scale;
+    let nx = ox, ny = oy, nw = ow, nh = oh;
+    if (handle.includes('e')) nw = Math.max(20, ow + dx);
+    if (handle.includes('s')) nh = Math.max(20, oh + dy);
+    if (handle.includes('w')) { nw = Math.max(20, ow - dx); nx = ox + (ow - nw); }
+    if (handle.includes('n')) { nh = Math.max(20, oh - dy); ny = oy + (oh - nh); }
+    el.style.left = nx + 'px';
+    el.style.top = ny + 'px';
+    el.style.width = nw + 'px';
+    el.style.height = nh + 'px';
+    if (selected === el) showProps(el);
+  }
+  function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function select(el) {
+  // v49:格式刷激活时,点元素 = 应用格式,而不是选中
+  if (el && isFormatBrushActive() && brushState) {
+    const srcEl = brushState.sourceId;
+    const dstEl = `${el.dataset.fid}/${el.dataset.id}`;
+    if (srcEl === dstEl) {
+      showStatus('🎨 源元素自身,跳过');
+      return;
+    }
+    if (applyFormatTo(el)) {
+      showStatus(`🎨 已把 ${srcEl} 的格式刷到 ${dstEl}`);
+      // 不退出,可连续刷多个目标
+    } else {
+      showStatus('⚠️ 应用失败');
+    }
+    return;
+  }
+  if (selected && el !== selected) selected.classList.remove('selected');
+  document.querySelectorAll('.el').forEach(e => e.classList.remove('selected'));
+  document.querySelectorAll('.frame-card').forEach(c => c.classList.remove('selected'));
+  selected = el;
+  if (el) {
+    el.classList.add('selected');
+    el.closest('.frame-card').classList.add('selected');
+    selectedFrame = el.closest('.frame-card').dataset.fid;
+    showProps(el);
+    showSource(el);
+  } else {
+    document.getElementById('props').innerHTML = '<div style="color:#888;font-size:12px">点击元素查看属性</div>';
+    document.getElementById('source').innerHTML = '<div style="color:#888;font-size:12px">点击元素查看属性</div>';
+  }
+}
+
+function showProps(el) {
+  const id = el.dataset.id;
+  const type = el.dataset.type;
+  const box = { x: parseInt(el.style.left), y: parseInt(el.style.top), w: parseInt(el.style.width), h: parseInt(el.style.height) };
+  const cfg = frameConfigs[el.dataset.fid].elements[id];
+  let html = `
+    <div class="row"><label>frame</label><input type="text" value="${el.dataset.fid}" disabled></div>
+    <div class="row"><label>id</label><input type="text" value="${id}" disabled></div>
+    <div class="row"><label>type</label><input type="text" value="${type}" disabled></div>
+    <div class="row"><label>x</label><input type="number" data-prop="x" value="${box.x}"></div>
+    <div class="row"><label>y</label><input type="number" data-prop="y" value="${box.y}"></div>
+    <div class="row"><label>w (宽)</label><input type="number" data-prop="w" value="${box.w}"></div>
+    <div class="row"><label>h (高)</label><input type="number" data-prop="h" value="${box.h}"></div>
+  `;
+  if (type === 'title' || type === 'subtitle' || type === 'header' || type === 'outro' || type === 'date' || type === 'body' || type === 'disclaimer') {
+    const fs = cfg?.fontSize || 50;
+    const fw = cfg?.fontWeight || 300;
+    const lp = (cfg?.line_pitch !== undefined) ? cfg.line_pitch : Math.round(fs * 1.2);
+    html += `
+      <div class="row"><label>fontSize</label><input type="number" data-prop="fontSize" value="${fs}"></div>
+      <div class="row"><label>fontWeight</label><input type="number" data-prop="fontWeight" value="${fw}"></div>
+      <div class="row"><label>linePitch (行距px)</label><input type="number" data-prop="linePitch" value="${lp}" title="行间距像素;近似模拟 line-height (lp/fs)"></div>
+    `;
+  }
+  document.getElementById('props').innerHTML = html;
+  document.querySelectorAll('#props input').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const p = e.target.dataset.prop;
+      if (['x', 'y', 'w', 'h'].includes(p)) {
+        el.style[p] = e.target.value + 'px';
+      } else if (p === 'fontSize' && el.querySelector('div:not(.lbl):not(.handle)')) {
+        const d = el.querySelector('div:not(.lbl):not(.handle)');
+        d.style.fontSize = e.target.value + 'px';
+        d.style.lineHeight = '1.2';
+      } else if (p === 'fontWeight' && el.querySelector('div:not(.lbl):not(.handle)')) {
+        el.querySelector('div:not(.lbl):not(.handle)').style.fontWeight = e.target.value;
+      } else if (p === 'linePitch' && el.querySelector('div:not(.lbl):not(.handle)')) {
+        const d = el.querySelector('div:not(.lbl):not(.handle)');
+        const fs = parseInt(d.style.fontSize) || 50;
+        const newLp = parseFloat(e.target.value);
+        d.style.lineHeight = (newLp / fs).toFixed(2);
+        // 同步到 cfg,确保 localStorage / 导出 layout.json 时保留
+        const cfgEl = frameConfigs[el.dataset.fid]?.elements?.[el.dataset.id];
+        if (cfgEl) cfgEl.line_pitch = newLp;
+      }
+    });
+  });
+}
+
+function showSource(el) {
+  const id = el.dataset.id;
+  const src = SOURCE_MAP[id];
+  const div = document.getElementById('source');
+  if (!src) {
+    div.innerHTML = '<div style="color:#888;font-size:12px">无输入源映射</div>';
+    return;
+  }
+  const curEl = el.querySelector('div:not(.lbl):not(.handle)');
+  const curVal = curEl ? curEl.textContent.trim().slice(0, 50) : '—';
+  div.innerHTML = `
+    <div style="font-size:11px;line-height:1.6">
+      <div style="color:#4a9eff;font-weight:bold">${src.key}</div>
+      <div style="color:#888;margin-top:4px">行号: ${src.row === null ? 'N/A' : src.row}</div>
+      <div style="color:#888;margin-top:4px">说明: ${src.desc}</div>
+      <div style="color:#aaa;margin-top:8px;padding:4px;background:#1a1a1a;border-radius:3px">当前值: <span style="color:#fff">${curVal}</span></div>
+      <div style="color:#555;margin-top:8px;font-size:10px">文件: inputs/T1_key_events/keyevents_en.xlsx</div>
+    </div>
+  `;
+}
+
+// 7 帧布局
+let fids = Object.keys(DEFAULT_CONFIGS);
+const cardW = 1080, cardH = 1920;
+const cardsPerRow = 3;
+const startX = 100, startY = 100;
+fids.forEach((fid, i) => {
+  const row = Math.floor(i / cardsPerRow);
+  const col = i % cardsPerRow;
+  const x = startX + col * (cardW + 200);
+  const y = startY + row * (cardH + 200);
+  const { card, elements } = createFrameCard(fid, x, y);
+  cardNodes[fid] = { card, elements };
+});
+
+applyView();
+
+// ===== v50:多语言切换 =====
+function rebuildFromLayout(layout) {
+  // 1. 清掉旧卡片
+  Object.values(cardNodes).forEach(c => c.card.remove());
+  cardNodes = {};
+  // 2. 替换 frameConfigs
+  frameConfigs = layoutToFrameConfigs(layout);
+  // 3. 重建 7 帧
+  fids = Object.keys(frameConfigs);
+  fids.forEach((fid, i) => {
+    const row = Math.floor(i / cardsPerRow);
+    const col = i % cardsPerRow;
+    const x = startX + col * (cardW + 200);
+    const y = startY + row * (cardH + 200);
+    const { card, elements } = createFrameCard(fid, x, y);
+    cardNodes[fid] = { card, elements };
+  });
+  // 4. 重置选中 + 居中第一帧
+  selected = null;
+  selectedFrame = null;
+  refreshBackgrounds();
+  const firstFid = fids[0];
+  if (firstFid && cardNodes[firstFid]) {
+    const cardRect = cardNodes[firstFid].card.getBoundingClientRect();
+    viewState.x = -cardNodes[firstFid].card.offsetLeft + (viewport.clientWidth - cardRect.width) / 2;
+    viewState.y = -cardNodes[firstFid].card.offsetTop + 100;
+    viewState.scale = 0.3;
+    applyView();
+  }
+}
+
+async function switchLanguage(lang) {
+  if (lang === currentLang && currentLayoutData) return;
+  showStatus(`🔄 正在加载 ${lang} 配置…`);
+  const layout = await fetchLayout(lang);
+  if (!layout) {
+    showStatus(`❌ ${lang} 配置加载失败 (layouts/${LAYOUT_FILES[lang]} 不存在)`);
+    return;
+  }
+  currentLang = lang;
+  currentLayoutData = layout;
+  rebuildFromLayout(layout);
+  showStatus(`✅ 已切换到 ${layout.name || lang} (${fids.length} 帧)`);
+}
+
+// 顶部 select 绑定
+document.getElementById('lang-select').addEventListener('change', (e) => {
+  switchLanguage(e.target.value);
+});
+
+// ===== 缩放:Cmd/Ctrl + 滚轮 =====
+viewport.addEventListener('wheel', (e) => {
+  if (!e.metaKey && !e.ctrlKey) return;
+  e.preventDefault();
+  const oldScale = viewState.scale;
+  const delta = -e.deltaY * 0.001;
+  const newScale = Math.max(0.1, Math.min(2, oldScale + delta));
+  const rect = viewport.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  viewState.x = mx - (mx - viewState.x) * (newScale / oldScale);
+  viewState.y = my - (my - viewState.y) * (newScale / oldScale);
+  viewState.scale = newScale;
+  applyView();
+}, { passive: false });
+
+// ===== 平移:空白/中键/Alt/Space+拖 =====
+let isPanning = false;
+let panStartX = 0, panStartY = 0;
+let spacePressed = false;
+window.addEventListener('keydown', (e) => { if (e.code === 'Space') { spacePressed = true; viewport.style.cursor = 'grab'; } });
+window.addEventListener('keyup', (e) => { if (e.code === 'Space') { spacePressed = false; viewport.style.cursor = 'default'; } });
+
+viewport.addEventListener('mousedown', (e) => {
+  const tgt = e.target;
+  const isFrameBg = tgt.classList && (tgt.classList.contains('frame-bg') || tgt.classList.contains('frame-card'));
+  const isPanTrigger = e.button === 1 || (e.button === 0 && e.altKey);
+  const isSpaceMode = spacePressed && e.button === 0;
+  const isBlankArea = !tgt.classList?.contains('el') && !tgt.classList?.contains('handle');
+  if (isPanTrigger || isSpaceMode || (e.button === 0 && isBlankArea)) {
+    isPanning = true;
+    panStartX = e.clientX - viewState.x;
+    panStartY = e.clientY - viewState.y;
+    viewport.classList.add('panning');
+    e.preventDefault();
+  }
+});
+window.addEventListener('mousemove', (e) => {
+  if (isPanning) {
+    viewState.x = e.clientX - panStartX;
+    viewState.y = e.clientY - panStartY;
+    applyView();
+  }
+});
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  viewport.classList.remove('panning');
+});
+
+world.addEventListener('mousedown', (e) => {
+  if (e.target === world) {
+    // v49:点空白处退出格式刷模式
+    if (isFormatBrushActive()) {
+      setBrushActive(false);
+      brushState = null;
+      showStatus('🎨 格式刷已退出');
+      return;
+    }
+    select(null);
+  }
+});
+
+// ===== v48:auto-apply from inline injection (auto_align_editor.sh 注入的 chdiff) =====
+// 数据格式:window.__INLINE_CHDIFF__ = { frames: { t002: {aligned:{...}}, t004: {...}, ... } }
+//          或单帧:window.__INLINE_CHDIFF__ = { fid: "t004", data: {aligned:{...}} }
+// 仅自动应用到指定 fid(默认 all);load 时 all,按钮点击时只动 selectedFrame
+function autoApplyFromInline(onlyFid) {
+  const inj = window.__INLINE_CHDIFF__;
+  if (!inj) return false;
+
+  let framesToApply = {};
+  if (inj.frames) {
+    framesToApply = inj.frames;  // 多帧
+  } else if (inj.fid && inj.data) {
+    framesToApply[inj.fid] = inj.data;  // 单帧
+  } else {
+    console.warn("__INLINE_CHDIFF__ 格式不对,跳过自动应用");
+    return false;
+  }
+
+  // 限定到 onlyFid(按钮点击场景)
+  if (onlyFid) {
+    if (!framesToApply[onlyFid]) {
+      showStatus(`⚠️ injection 里没有 ${onlyFid} 的 chdiff`);
+      return false;
+    }
+    framesToApply = { [onlyFid]: framesToApply[onlyFid] };
+  }
+
+  let totalCount = 0;
+  const fids = Object.keys(framesToApply);
+
+  for (const fid of fids) {
+    if (!frameConfigs[fid]) {
+      console.warn(`fid ${fid} 不在 7 帧配置里,跳过`);
+      continue;
+    }
+    const aligned = framesToApply[fid].aligned || {};
+    const cfg = frameConfigs[fid];
+    let count = 0;
+    for (const [eid, al] of Object.entries(aligned)) {
+      const el = cfg.elements[eid];
+      if (!el || !al) continue;
+      // v48 修复:用 delta_x_left(RTL 右缘位移),应用到元素 x 时取负
+      if (al.delta_x_left !== undefined) { el.x = Math.round(el.x - al.delta_x_left); count++; }
+      else if (al.delta_x !== undefined) { el.x = Math.round(el.x - al.delta_x); count++; }
+      if (al.delta_y_top !== undefined) el.y = Math.round(el.y - al.delta_y_top);
+      if (al.delta_w !== undefined) el.w = Math.round(el.w - al.delta_w);
+      if (al.delta_h !== undefined) el.h = Math.round(el.h - al.delta_h);
+      if (al.delta_cap_h !== undefined) el.h = Math.round(el.h - al.delta_cap_h);
+      if (al.stroke_w_ratio !== undefined && el.fontSize && al.stroke_w_ratio < 0.85) {
+        el.fontSize = Math.round(el.fontSize / al.stroke_w_ratio);
+      }
+    }
+    // 重建该帧的 DOM
+    const card = cardNodes[fid].card;
+    Object.values(cardNodes[fid].elements).forEach(el => el.remove());
+    cardNodes[fid].elements = {};
+    Object.entries(cfg.elements).forEach(([eid, box]) => {
+      const el = createElementNode(fid, eid, box);
+      card.appendChild(el);
+      cardNodes[fid].elements[eid] = el;
+    });
+    totalCount += count;
+  }
+
+  if (totalCount > 0) {
+    const scope = onlyFid ? `${onlyFid}` : `${fids.length} 帧`;
+    showStatus(`✅ 自动应用 ${totalCount} 个 delta 到 ${scope} (来自 inline injection)`);
+  }
+  return totalCount > 0;
+}
+
+// ===== v48:按钮只动选中帧(尊重 v47 行为) =====
+// v47 file picker 已移除(CORS 限制,改用 --inject-html 注入 chdiff)
+
+function aiAlign() {
+  // 必须先选中元素(否则不知道改哪帧)
+  if (!selectedFrame) {
+    showStatus('⚠️ 请先点选某个元素(任意帧上的 logo/标题/副标)');
+    return;
+  }
+
+  // 从 inline injection 自动应用,只动选中帧(不动其他帧)
+  if (window.__INLINE_CHDIFF__) {
+    autoApplyFromInline(selectedFrame);  // ← onlyFid=selectedFrame
+    return;
+  }
+
+  // 没有 inline 数据:提示用户走正确流程
+  showStatus('⚠️ 没有 chdiff 数据。请先跑: bash tools/auto_align_editor.sh --inject-html');
+  setTimeout(() => {
+    showStatus('💡 或者直接拖动/微调元素,然后点"保存到 localStorage"');
+  }, 3500);
+}
+
+// 保留 inputFile 定义但禁用(防回退时误触发)
+const inputFile = document.createElement('input');
+inputFile.type = 'file';
+inputFile.accept = '.json';
+inputFile.style.display = 'none';
+inputFile.disabled = true;
+document.body.appendChild(inputFile);
+
+// ===== 工具栏 =====
+document.getElementById('btn-save').addEventListener('click', saveToStorage);
+document.getElementById('btn-toggle-bg').addEventListener('click', () => {
+  showingReference = !showingReference;
+  refreshBackgrounds();
+  showStatus(showingReference ? '正在显示原版 GT 参考图' : '正在显示当前模板渲染图');
+});
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (confirm('确定恢复默认 7 帧配置?已保存的会丢失。')) {
+    clearStorage();
+    // 重建卡片
+    Object.values(cardNodes).forEach(c => c.card.remove());
+    cardNodes = {};
+    fids.forEach((fid, i) => {
+      const row = Math.floor(i / cardsPerRow);
+      const col = i % cardsPerRow;
+      const x = startX + col * (cardW + 200);
+      const y = startY + row * (cardH + 200);
+      const { card, elements } = createFrameCard(fid, x, y);
+      cardNodes[fid] = { card, elements };
+    });
+    viewState = { x: 0, y: 0, scale: 0.3 };
+    applyView();
+  }
+});
+
+document.getElementById('btn-ai-align').addEventListener('click', aiAlign);
+
+// v50+:导入 sample_xx.json,把真实文字填到元素(text 字段)
+function pickSampleText(data) {
+  return {
+    intro_title_l1: data.intro_title_l1 || '',
+    intro_title_l2: data.intro_title_l2 || '',
+    intro_title_l3: data.intro_title_l3 || '',
+    header_title: data.header_title || '',
+    period_start: data.period?.start || '',
+    period_end: data.period?.end || '',
+    events: Array.isArray(data.events) ? data.events : [],
+    outro_headline_l1: data.outro_headline_l1 || '',
+    outro_headline_l2: data.outro_headline_l2 || '',
+    outro_subline_l1: data.outro_subline_l1 || '',
+    outro_subline_l2: data.outro_subline_l2 || '',
+    outro_url: data.outro_url || '',
+    disclaimer_l1: data.disclaimer_l1 || '',
+    disclaimer_l2: data.disclaimer_l2 || '',
+  };
+}
+
+// 从 ISO 日期 (YYYY-MM-DD) 推算 weekday(短)
+function weekdayFromIso(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  const map_en = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const map_zh = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const map_es = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const map_ar = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const map = { sp: map_es, en: map_en, ja: map_en, kr: map_en, th: map_en, vi: map_en, cn: map_zh, hi: map_en, ar: map_ar };
+  const langMap = map[currentLang] || map_en;
+  return langMap[d.getDay()];
+}
+
+// ISO 日期 (YYYY-MM-DD) → "12 julio" 格式(按语言)
+function dateLocalized(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  const day = d.getDate();
+  const months = {
+    sp: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    ja: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    kr: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+    th: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+    vi: ['Th1','Th2','Th3','Th4','Th5','Th6','Th7','Th8','Th9','Th10','Th11','Th12'],
+    cn: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    hi: ['जन','फ़र','मार्च','अप्रैल','मई','जून','जुल','अग','सित','अक्टू','नव','दिस'],
+    ar: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+  };
+  const monthList = months[currentLang] || months.en;
+  return `${day} ${monthList[d.getMonth()]}`;
+}
+
+// 把 sample 文字写到当前 frameConfigs(不重置几何,只改 text)
+function applySampleText(data) {
+  const s = pickSampleText(data);
+  // t002 intro
+  const intro = frameConfigs['t002'];
+  if (intro) {
+    const els = intro.elements;
+    if (els.title1) els.title1.text = s.intro_title_l1;
+    if (els.title2) els.title2.text = s.intro_title_l2;
+    if (els.title3) els.title3.text = s.intro_title_l3;
+    // subtitle = "27 - 31 julio" 范围格式
+    if (els.subtitle) {
+      if (s.period_start && s.period_end) {
+        const startD = new Date(s.period_start + 'T00:00:00');
+        const endD = new Date(s.period_end + 'T00:00:00');
+        const months = {
+          sp: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+          en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+          ar: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+        };
+        const m = months[currentLang] || months.en;
+        // RTL 反序
+        if (currentLang === 'ar') {
+          els.subtitle.text = `${endD.getDate()} - ${startD.getDate()} ${m[startD.getMonth()]}`;
+        } else {
+          els.subtitle.text = `${startD.getDate()} - ${endD.getDate()} ${m[startD.getMonth()]}`;
+        }
+      }
+    }
+  }
+  // 5 张卡(t004/t011/t018/t025/t032)
+  ['t004', 't011', 't018', 't025', 't032'].forEach((fid, idx) => {
+    const ev = s.events[idx];
+    const card = frameConfigs[fid];
+    if (!card) return;
+    const els = card.elements;
+    if (els.header) els.header.text = s.header_title;
+    if (els.period && s.period_start && s.period_end) {
+      const startD = new Date(s.period_start + 'T00:00:00');
+      const endD = new Date(s.period_end + 'T00:00:00');
+      const months = {
+        sp: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+        en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        ar: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
+      };
+      const m = months[currentLang] || months.en;
+      if (currentLang === 'ar') {
+        els.period.text = `${endD.getDate()} - ${startD.getDate()} ${m[startD.getMonth()]}`;
+      } else {
+        els.period.text = `${startD.getDate()} - ${endD.getDate()} ${m[startD.getMonth()]}`;
+      }
+    }
+    if (ev) {
+      if (els.weekday) els.weekday.text = weekdayFromIso(ev.date);
+      if (els.date) els.date.text = dateLocalized(ev.date);
+      if (els.body) els.body.text = ev.body || '';
+    }
+  });
+  // t042 outro
+  const outro = frameConfigs['t042'];
+  if (outro) {
+    const els = outro.elements;
+    if (els.headline1) els.headline1.text = s.outro_headline_l1;
+    if (els.headline2) els.headline2.text = s.outro_headline_l2;
+    if (els.subline1) els.subline1.text = s.outro_subline_l1;
+    if (els.subline2) els.subline2.text = s.outro_subline_l2;
+    if (els.url) els.url.text = s.outro_url;
+  }
+}
+
+document.getElementById('btn-load-sample').addEventListener('click', async () => {
+  // v50+:从 inputs/T1_key_events/sample_${lang}.json 加载(从 symlink 或 ../.. 路径)
+  const fname = `sample_${currentLang}.json`;
+  // symlink 是 editor/outputs -> ../../outputs,那 inputs 也应该 symlink
+  const paths = [
+    `inputs/T1_key_events/${fname}`,                  // via inputs symlink
+    `../../inputs/T1_key_events/${fname}`,            // relative
+  ];
+  for (const p of paths) {
+    try {
+      const resp = await fetch(p);
+      if (resp.ok) {
+        const data = await resp.json();
+        applySampleText(data);
+        fids.forEach((fid) => {
+          const card = cardNodes[fid].card;
+          Object.values(cardNodes[fid].elements).forEach(el => el.remove());
+          cardNodes[fid].elements = {};
+          Object.entries(frameConfigs[fid].elements).forEach(([eid, box]) => {
+            const newEl = createElementNode(fid, eid, box);
+            card.appendChild(newEl);
+            cardNodes[fid].elements[eid] = newEl;
+          });
+        });
+        showStatus(`✅ 已加载 ${p}`);
+        return;
+      }
+    } catch (e) { /* try next */ }
+  }
+  showStatus(`❌ 找不到 ${fname}(试过:${paths.join(', ')})`);
+});
+
+document.getElementById('btn-import-json').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        applySampleText(data);
+        // 重建预览(更新文字)
+        fids.forEach((fid) => {
+          const card = cardNodes[fid].card;
+          Object.values(cardNodes[fid].elements).forEach(el => el.remove());
+          cardNodes[fid].elements = {};
+          Object.entries(frameConfigs[fid].elements).forEach(([eid, box]) => {
+            const newEl = createElementNode(fid, eid, box);
+            card.appendChild(newEl);
+            cardNodes[fid].elements[eid] = newEl;
+          });
+        });
+        showStatus(`✅ 已导入 ${file.name} — 文字已更新`);
+      } catch (err) {
+        showStatus(`❌ 解析失败: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  // v50:导出当前语言完整 layouts/${lang}.json
+  const exported = {
+    language: currentLang,
+    name: currentLayoutData?.name || currentLang,
+    canvas: currentLayoutData?.canvas || { width: 1080, height: 1920 },
+    font_family: currentLayoutData?.font_family || 'Tajawal, sans-serif',
+    text_direction: currentLayoutData?.text_direction || 'rtl',
+    _exported_at: new Date().toISOString(),
+    frames: {}
+  };
+  fids.forEach((fid) => {
+    const fc = frameConfigs[fid];
+    if (!fc) return;
+    exported.frames[fid] = {
+      label: fc.label || fid,
+      bg_path: fc.bg || '',
+      reference_bg_path: fc.referenceBg || '',
+      elements: {}
+    };
+    Object.entries(fc.elements).forEach(([eid, cfg]) => {
+      exported.frames[fid].elements[eid] = {
+        x: cfg.x, y: cfg.y, w: cfg.w, h: cfg.h,
+        type: cfg.type,
+        text: cfg.text || '',
+        fontSize: cfg.fontSize,
+        fontWeight: cfg.fontWeight,
+        line_pitch: cfg.line_pitch
+      };
+    });
+  });
+  const json = JSON.stringify(exported, null, 2);
+  const fname = `layout_${currentLang}.json`;
+  // v51+:API 模式 — 直接 PUT 到 Vercel API(写 GitHub)
+  if (API_BASE) {
+    fetch(`${API_BASE}/api/layouts/${currentLang}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'If-Match': currentSha ? `"${currentSha}"` : '',
+  },
+      body: JSON.stringify({ data: exported, message: `Update ${currentLang} via editor` }),
+    })
+    .then(async resp => {
+      const body = await resp.json();
+      if (!resp.ok) {
+        showStatus(`❌ API PUT 失败: ${body.error || resp.status}`);
+        throw new Error(body.error);
+      }
+      currentSha = body.sha;
+      showStatus(`✅ 已写入 ${fname} 到 GitHub (sha: ${body.sha.slice(0, 7)}...)`);
+    })
+    .catch((e) => {
+      // 兜底:复制到剪贴板
+      navigator.clipboard.writeText(json).then(() => {
+        showStatus(`❌ API 失败(${e.message}),已复制到剪贴板`);
+      });
+    });
+    return;
+  }
+  // 本地模式:复制到剪贴板 + 兜底下载
+  navigator.clipboard.writeText(json).then(() => {
+    showStatus(`📥 已复制 ${fname} (${fids.length} 帧) 到剪贴板`);
+  }).catch(() => {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus(`📥 已下载 ${fname} (剪贴板失败,改用下载)`);
+  });
+});
+
+function showStatus(msg) {
+  status.textContent = msg;
+  status.classList.add('show');
+  setTimeout(() => status.classList.remove('show'), 3000);
+}
+
+// ===== v49:格式刷 =====
+// 用法:点元素 A → 吸格式 → 点元素 B → 应用 A 的格式到 B
+// 复制:x, y, w, h, fontSize, fontWeight (位置+字号+字重)
+// 不复制:text, type (内容+类型不能混)
+let brushState = null;  // null=未激活; { source: elData, sourceId: '...' } = 已吸
+let brushButton = null;
+
+function isFormatBrushActive() {
+  return brushButton && brushButton.classList.contains('active');
+}
+
+function setBrushActive(active) {
+  if (!brushButton) return;
+  brushButton.classList.toggle('active', active);
+  document.body.style.cursor = active ? 'crosshair' : '';
+}
+
+function pickUpFormat(el) {
+  const id = el.dataset.id;
+  const fid = el.dataset.fid;
+  const cfg = frameConfigs[fid]?.elements?.[id];
+  if (!cfg) return null;
+  // 只复制可移植的格式字段
+  return {
+    sourceId: `${fid}/${id}`,
+    format: {
+      x: cfg.x, y: cfg.y, w: cfg.w, h: cfg.h,
+      fontSize: cfg.fontSize, fontWeight: cfg.fontWeight,
+    },
+  };
+}
+
+function applyFormatTo(el) {
+  if (!brushState) return false;
+  const id = el.dataset.id;
+  const fid = el.dataset.fid;
+  const cfg = frameConfigs[fid]?.elements?.[id];
+  if (!cfg) return false;
+
+  // 类型不同时不给换字号字重(避免 logo 被强制变 title 字号)
+  // 注意:type 直接挂在 brushState 上,不在 .source 下(初版写错位置)
+  const srcType = (brushState.type || '').toLowerCase();
+  const dstType = (cfg.type || '').toLowerCase();
+  const typeMismatch = srcType && dstType && srcType !== dstType;
+
+  if (!typeMismatch) {
+    if (brushState.format.fontSize !== undefined) cfg.fontSize = brushState.format.fontSize;
+    if (brushState.format.fontWeight !== undefined) cfg.fontWeight = brushState.format.fontWeight;
+  }
+  // 位置/大小总是覆盖(用户明确选的就是这个意图)
+  cfg.x = brushState.format.x;
+  cfg.y = brushState.format.y;
+  cfg.w = brushState.format.w;
+  cfg.h = brushState.format.h;
+
+  // 重建该元素 DOM
+  const card = cardNodes[fid].card;
+  const oldEl = cardNodes[fid].elements?.[id];
+  if (oldEl) {
+    const newEl = createElementNode(fid, id, cfg);
+    oldEl.replaceWith(newEl);
+    cardNodes[fid].elements[id] = newEl;
+  }
+  return true;
+}
+
+document.getElementById('btn-format-brush').addEventListener('click', () => {
+  if (isFormatBrushActive()) {
+    // 退出格式刷模式
+    setBrushActive(false);
+    brushState = null;
+    showStatus('🎨 格式刷已退出');
+    return;
+  }
+  if (!selected) {
+    showStatus('⚠️ 请先点选一个元素作为格式源');
+    return;
+  }
+  const picked = pickUpFormat(selected);
+  if (!picked) {
+    showStatus('⚠️ 无法吸取当前元素格式');
+    return;
+  }
+  brushState = picked;
+  brushState.type = frameConfigs[selected.dataset.fid]?.elements?.[selected.dataset.id]?.type;
+  setBrushActive(true);
+  showStatus(`🎨 已吸 ${picked.sourceId} 的格式 — 点其他元素应用,点空白退出`);
+});
+
+// 注入的 chdiff 只供用户点按钮后试验性应用；当前快照已是实际模板数据，
+// 不能在载入时再次叠加旧 delta，否则元素框会重新偏离当前渲染。
+window.addEventListener('load', () => {
+  brushButton = document.getElementById('btn-format-brush');
+  const firstFid = Object.keys(frameConfigs)[0];
+  if (firstFid && cardNodes[firstFid]) {
+    const card = cardNodes[firstFid].card;
+    const cardRect = card.getBoundingClientRect();
+    viewState.x = -card.offsetLeft + (viewport.clientWidth - cardRect.width) / 2;
+    viewState.y = -card.offsetTop + 100;
+    applyView();
+  }
+  // v50:自动加载 ar.json(异步,失败用 DEFAULT_CONFIGS 兜底)
+  switchLanguage('ar').catch(err => console.warn('auto load ar.json failed:', err));
+});
+</script>
+
+</body>
+</html>

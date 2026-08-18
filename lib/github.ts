@@ -43,12 +43,14 @@ export async function readLayout(lang: string): Promise<{ data: any; sha: string
   const { data } = await octokit.rest.repos.getContent({
     owner: OWNER, repo: REPO, path: filePathForLang(lang), ref: BRANCH,
   });
-  if (Array.isArray(data) || data.type !== 'file') {
-    throw new Error('Expected file, got ' + data.type);
+  // data 可能是 file / dir / symlink 等;我们只处理 file
+  const file = Array.isArray(data) ? null : (data as any);
+  if (!file || file.type !== 'file') {
+    throw new Error(`Expected file, got ${Array.isArray(data) ? 'directory' : file?.type}`);
   }
   // content 是 base64 编码
-  const content = Buffer.from(data.content, 'base64').toString('utf-8');
-  return { data: JSON.parse(content), sha: data.sha };
+  const content = Buffer.from(file.content, 'base64').toString('utf-8');
+  return { data: JSON.parse(content), sha: file.sha };
 }
 
 export async function writeLayout(
