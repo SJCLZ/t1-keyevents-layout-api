@@ -2,13 +2,18 @@ import { Pool, neon } from '@neondatabase/serverless';
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 
-let _pool: Pool | null = null;
+// v52+:globalThis 缓存 pool,避免 Next.js dev HMR 重复创建导致 Neon serverless 连接泄漏
+declare global {
+  // eslint-disable-next-line no-var
+  var __neonPool: Pool | undefined;
+}
+
 function pool() {
-  if (!_pool) {
+  if (!globalThis.__neonPool) {
     if (!DATABASE_URL) throw new Error('DATABASE_URL not set');
-    _pool = new Pool({ connectionString: DATABASE_URL });
+    globalThis.__neonPool = new Pool({ connectionString: DATABASE_URL });
   }
-  return _pool;
+  return globalThis.__neonPool!;
 }
 
 export interface LayoutRow {

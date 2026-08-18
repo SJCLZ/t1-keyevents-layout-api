@@ -84,7 +84,7 @@ export default function EditorPage() {
     // v52+:从 deps 移除 sha(避免 sha 更新后再触发 useEffect → 死循环)
   }, [frameConfigs, lang, layout, setSha, setStatus]);
 
-  // 键盘快捷键
+  // 键盘快捷键(Ctrl+Z 撤销,Esc 取消选择)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -92,29 +92,6 @@ export default function EditorPage() {
       // Esc 键 → 取消选中(任何时候都生效,即使在输入框)
       if (e.key === 'Escape') {
         useEditor.getState().setSelected(null, null);
-        return;
-      }
-      // Ctrl+Shift+> / <  → 调字号(PPT 风格)
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === '>' || e.key === '.')) {
-        e.preventDefault();
-        const s = useEditor.getState();
-        if (s.selectedFid && s.selectedEid) {
-          const el = s.frameConfigs[s.selectedFid]?.elements?.[s.selectedEid];
-          if (el && el.fontSize !== undefined) {
-            s.updateElement(s.selectedFid, s.selectedEid, 'fontSize', el.fontSize + 1);
-          }
-        }
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === '<' || e.key === ',')) {
-        e.preventDefault();
-        const s = useEditor.getState();
-        if (s.selectedFid && s.selectedEid) {
-          const el = s.frameConfigs[s.selectedFid]?.elements?.[s.selectedEid];
-          if (el && el.fontSize !== undefined) {
-            s.updateElement(s.selectedFid, s.selectedEid, 'fontSize', Math.max(1, el.fontSize - 1));
-          }
-        }
         return;
       }
       // 编辑相关快捷键只在非输入框生效
