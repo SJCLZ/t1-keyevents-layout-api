@@ -17,8 +17,12 @@ export async function GET(
   try {
     const { data, sha } = await readLayout(lang);
     // 加 ETag header,客户端 If-Match 头可走乐观锁
+    // 禁用 Vercel CDN 缓存(layout JSON 改了要立即生效)
     return NextResponse.json(data, {
-      headers: { ETag: `"${sha}"` },
+      headers: {
+        ETag: `"${sha}"`,
+        'Cache-Control': 'no-store, max-age=0',
+      },
     });
   } catch (e: any) {
     if (e.status === 404) {

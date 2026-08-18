@@ -3,13 +3,23 @@ import { Octokit } from '@octokit/rest';
 const OWNER = process.env.GITHUB_OWNER || '';
 const REPO = process.env.GITHUB_REPO || '';
 const BRANCH = process.env.GITHUB_BRANCH || 'main';
-const LAYOUTS_PATH = process.env.LAYOUTS_PATH || 'skills/04_parameterized_video/tools/editor/layouts';
+// v51+:LAYOUTS_PATH 默认空字符串(layouts 在 GitHub 仓库根目录,sp.json / ar.json / ...)
+const LAYOUTS_PATH = process.env.LAYOUTS_PATH || '';
 const TOKEN = process.env.GITHUB_TOKEN;
 
 let _octokit: Octokit | null = null;
 function getOctokit(): Octokit {
   if (!_octokit) {
-    _octokit = new Octokit({ auth: TOKEN, userAgent: 't1-keyevents-layout-api/0.1' });
+    // v51+:传 no-cache fetch,避免 Vercel / Octokit 缓存旧版 layouts
+    const noCacheFetch = (url: string, opts: any = {}) => {
+      const headers = { ...opts.headers, 'Cache-Control': 'no-cache' };
+      return fetch(url, { ...opts, headers, cache: 'no-store' });
+    };
+    _octokit = new Octokit({
+      auth: TOKEN,
+      userAgent: 't1-keyevents-layout-api/0.1',
+      request: { fetch: noCacheFetch as any },
+    });
   }
   return _octokit;
 }
