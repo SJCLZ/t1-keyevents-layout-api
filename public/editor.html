@@ -60,14 +60,12 @@
       <option value="hi">HI 印地语 (placeholder)</option>
     </select>
   </label>
-  <button id="btn-save">保存到 localStorage</button>
-  <button id="btn-reset" class="secondary">清除 localStorage (恢复默认)</button>
+  <button id="btn-import-json" class="secondary">📋 导入 sample JSON</button>
+  <button id="btn-load-sample" class="secondary">⚡ 加载 sample (当前语言)</button>
+  <button id="btn-export">📥 写回 GitHub (API)</button>
   <button id="btn-toggle-bg" class="secondary">显示原版参考</button>
   <button id="btn-format-brush" class="secondary">🎨 格式刷</button>
   <button id="btn-ai-align">📐 自动应用 chdiff</button>
-  <button id="btn-import-json" class="secondary">📋 导入 sample JSON</button>
-  <button id="btn-load-sample" class="secondary">⚡ 加载 sample (当前语言)</button>
-  <button id="btn-export">📥 导出 layout JSON</button>
   <span>操作:空白拖=平移 | 元素拖=移动 | 拉角=缩放 | Space+拖=强制平移 | Cmd+滚轮=缩放</span>
 </div>
 
@@ -192,6 +190,9 @@ const _savedBase = (typeof localStorage !== 'undefined' && localStorage.getItem(
 const _originBase = (typeof window !== 'undefined' && window.location.protocol !== 'file:' && window.location.host)
   ? window.location.origin : '';
 const API_BASE = _savedBase || _originBase;
+// v51+:templates 仓库 raw URL base(logo / GT 帧)
+const TEMPLATE_LOGO_BASE = (typeof localStorage !== 'undefined' && localStorage.getItem('template-base'))
+  || 'https://raw.githubusercontent.com/SJCLZ/t1-keyevents-templates';
 let currentLang = 'ar';
 let currentLayoutData = null;  // 当前 fetch 到的 layout JSON(用于导出)
 let currentSha = null;  // v51+:GT 文件的 sha(用于 PUT 乐观锁)
@@ -323,57 +324,11 @@ const SOURCE_MAP = {
   'subtitle': { key: 'period_start - period_end', row: '2-3', desc: 'Intro 副标(周期日期)' }
 };
 
-// ===== localStorage 持久化(per-language,避免跨语言污染) =====
-const STORAGE_KEY = () => `t1_editor_v1_${currentLang}`;
+// v51+:localStorage 取消 — 编辑器走 API 模式,改完直接 PUT 到 GitHub
 let frameConfigs;
-
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY());
-    if (!raw) return false;
-    const saved = JSON.parse(raw);
-    // 用保存的数据覆盖默认
-    frameConfigs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
-    Object.entries(saved).forEach(([fid, els]) => {
-      if (frameConfigs[fid]) {
-        Object.entries(els).forEach(([eid, pos]) => {
-          if (frameConfigs[fid].elements[eid]) {
-            Object.assign(frameConfigs[fid].elements[eid], pos);
-          }
-        });
-      }
-    });
-    return true;
-  } catch (e) { return false; }
-}
-
-function saveToStorage() {
-  const data = {};
-  Object.entries(frameConfigs).forEach(([fid, cfg]) => {
-    data[fid] = {};
-    Object.entries(cfg.elements).forEach(([eid, box]) => {
-      data[fid][eid] = { x: box.x, y: box.y, w: box.w, h: box.h, fontSize: box.fontSize, fontWeight: box.fontWeight, line_pitch: box.line_pitch, text: box.text };
-    });
-  });
-  localStorage.setItem(STORAGE_KEY(), JSON.stringify(data));
-  showStatus(`已保存 ${currentLang} 配置到 localStorage`);
-}
-
-function clearStorage() {
-  localStorage.removeItem(STORAGE_KEY());
-  // v50:用当前语言 layout 数据重建(不用 DEFAULT_CONFIGS,因为它是 AR 兜底,SP 切回来会错位)
-  if (currentLayoutData) {
-    frameConfigs = layoutToFrameConfigs(currentLayoutData);
-    rebuildFromLayout(currentLayoutData);
-  } else {
-    frameConfigs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
-  }
-  showStatus(`已清除 ${currentLang} 配置`);
-}
 
 // 加载
 frameConfigs = JSON.parse(JSON.stringify(DEFAULT_CONFIGS));
-loadFromStorage();
 
 // ===== 渲染 =====
 const viewport = document.getElementById('canvas-viewport');
@@ -448,8 +403,8 @@ function createElementNode(fid, eid, box) {
   el.style.width = box.w + 'px';
   el.style.height = box.h + 'px';
   if (box.type === 'logo') {
-    // v50+:用官方 logo + object-fit:fill(等价 SVG preserveAspectRatio="none" 拉满 ink 框)
-    el.innerHTML = `<img src="remotion/public/startrader_logo_official.png" style="width:100%;height:100%;pointer-events:none;object-fit:fill"><div class="lbl">${eid}</div>` + handleHTML();
+    // v51+:logo 从 templates 仓库 raw URL 拉(基于 currentLang)
+    el.innerHTML = `<img src="${TEMPLATE_LOGO_BASE}/main/assets/${currentLang}/logo.png" style="width:100%;height:100%;pointer-events:none;object-fit:fill"><div class="lbl">${eid}</div>` + handleHTML();
   } else {
     const color = box.type === 'date' || box.type === 'subtitle' ? '#6590D7' : '#fff';
     const fs = box.fontSize || 50;
@@ -855,29 +810,10 @@ inputFile.disabled = true;
 document.body.appendChild(inputFile);
 
 // ===== 工具栏 =====
-document.getElementById('btn-save').addEventListener('click', saveToStorage);
 document.getElementById('btn-toggle-bg').addEventListener('click', () => {
   showingReference = !showingReference;
   refreshBackgrounds();
   showStatus(showingReference ? '正在显示原版 GT 参考图' : '正在显示当前模板渲染图');
-});
-document.getElementById('btn-reset').addEventListener('click', () => {
-  if (confirm('确定恢复默认 7 帧配置?已保存的会丢失。')) {
-    clearStorage();
-    // 重建卡片
-    Object.values(cardNodes).forEach(c => c.card.remove());
-    cardNodes = {};
-    fids.forEach((fid, i) => {
-      const row = Math.floor(i / cardsPerRow);
-      const col = i % cardsPerRow;
-      const x = startX + col * (cardW + 200);
-      const y = startY + row * (cardH + 200);
-      const { card, elements } = createFrameCard(fid, x, y);
-      cardNodes[fid] = { card, elements };
-    });
-    viewState = { x: 0, y: 0, scale: 0.3 };
-    applyView();
-  }
 });
 
 document.getElementById('btn-ai-align').addEventListener('click', aiAlign);
