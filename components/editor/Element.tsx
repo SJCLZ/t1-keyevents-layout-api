@@ -1,21 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import styles from './editor.module.css';
+import { useDrag } from '@use-gesture/react';
+import { useEditor } from '@/lib/store';
 
-interface Props {
-  fid: string;
-  eid: string;
-  element: any;
-  scale: number;
-  lang: string;  // 决定 fontFamily / textAlign
-  isSelected: boolean;
-  onSelect: () => void;
-  onMove: (x: number, y: number) => void;
-  onPropChange: (prop: string, value: any) => void;
-}
-
-const FONT_FAMILY: Record<string, string> = {
+const FONT: Record<string, string> = {
   sp: "'Plus Jakarta Sans', sans-serif",
   ar: "'Tajawal', sans-serif",
   ja: "'Noto Sans JP', sans-serif",
@@ -27,58 +15,54 @@ const FONT_FAMILY: Record<string, string> = {
   cn: "'Noto Sans SC', sans-serif",
 };
 
-export default function Element({ eid, element, scale, lang, isSelected, onSelect, onMove, onPropChange }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const dragging = useRef<{ x: number; y: number } | null>(null);
+const SCALE = 360 / 1080;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect();
-    if (!ref.current) return;
-    dragging.current = {
-      x: e.clientX,
-      y: e.clientY,
-    };
-    const onMove2 = (ev: MouseEvent) => {
-      if (!dragging.current) return;
-      const dx = (ev.clientX - dragging.current.x) / scale;
-      const dy = (ev.clientY - dragging.current.y) / scale;
-      dragging.current = { x: ev.clientX, y: ev.clientY };
-      onMove(element.x + dx, element.y + dy);
-    };
-    const onUp = () => {
-      dragging.current = null;
-      document.removeEventListener('mousemove', onMove2);
-      document.removeEventListener('mouseup', onUp);
-    };
-    document.addEventListener('mousemove', onMove2);
-    document.addEventListener('mouseup', onUp);
-  };
+interface Props {
+  fid: string;
+  eid: string;
+  element: any;
+  lang: string;
+}
 
-  // logo 类型特殊处理
+export default function Element({ fid, eid, element, lang }: Props) {
+  const selectedFid = useEditor((s) => s.selectedFid);
+  const selectedEid = useEditor((s) => s.selectedEid);
+  const setSelected = useEditor((s) => s.setSelected);
+  const moveElement = useEditor((s) => s.moveElement);
+  const isSelected = selectedFid === fid && selectedEid === eid;
+
+  const bind = useDrag(
+    ({ down, movement: [mx, my], event }) => {
+      event?.stopPropagation();
+      // pointer down 时选中
+      if (down) setSelected(fid, eid);
+      // 实时更新位置
+      moveElement(fid, eid, element.x + mx / SCALE, element.y + my / SCALE);
+    },
+    { pointer: { keys: false } },
+  );
+
+  // Logo 类型(图片)
   if (element.type === 'logo') {
     return (
       <img
-        ref={ref as any}
         src={`/assets/${lang}/logo.png`}
-        className={`${styles.element} ${styles.logo} ${isSelected ? styles.selected : ''}`}
-        style={{
-          left: element.x * scale,
-          top: element.y * scale,
-          width: element.w * scale,
-          height: element.h * scale,
-        }}
-        onMouseDown={handleMouseDown}
-        onClick={(e) => { e.stopPropagation(); onSelect(); }}
         alt="logo"
+        {...(bind() as any)}
+        className={`absolute cursor-move select-none ${isSelected ? 'outline-2 outline-red-500' : 'hover:outline hover:outline-blue-400 hover:outline-dashed'}`}
+        style={{
+          left: element.x * SCALE,
+          top: element.y * SCALE,
+          width: element.w * SCALE,
+          height: element.h * SCALE,
+          objectFit: 'fill',
+        }}
       />
     );
   }
 
   const color = element.type === 'date' || element.type === 'subtitle' ? '#6590D7' : '#fff';
-  const fontSize = (element.fontSize || 50) * scale;
-  const fontWeight = element.fontWeight || 300;
-  const fontFamily = FONT_FAMILY[lang] || 'sans-serif';
+  const fontSize = (element.fontSize || 50) * SCALE;
   const textAlign = lang === 'ar' ? 'right' : 'left';
   const lineHeight = element.line_pitch && element.fontSize
     ? element.line_pitch / element.fontSize
@@ -86,24 +70,23 @@ export default function Element({ eid, element, scale, lang, isSelected, onSelec
 
   return (
     <div
-      ref={ref}
-      className={`${styles.element} ${isSelected ? styles.selected : ''}`}
+      {...(bind() as any)}
+      className={`absolute cursor-move select-none flex items-end px-1.5 box-border ${
+        isSelected ? 'outline-2 outline-red-500' : 'hover:outline hover:outline-blue-400 hover:outline-dashed'
+      }`}
       style={{
-        left: element.x * scale,
-        top: element.y * scale,
-        width: element.w * scale,
-        minHeight: element.h * scale,
+        left: element.x * SCALE,
+        top: element.y * SCALE,
+        width: element.w * SCALE,
+        minHeight: element.h * SCALE,
         color,
-        fontFamily,
+        fontFamily: FONT[lang] || 'sans-serif',
         fontSize,
-        fontWeight,
+        fontWeight: element.fontWeight || 300,
         lineHeight,
         textAlign,
       }}
-      onMouseDown={handleMouseDown}
-      onClick={(e) => { e.stopPropagation(); onSelect(); }}
     >
-      <div className={styles.elementLabel}>{eid}: {(element.text || '').slice(0, 20)}</div>
       {element.text || ''}
     </div>
   );
