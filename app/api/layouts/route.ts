@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { listLayouts, isConfigured } from '@/lib/github';
+import { listLayouts, isConfigured, ensureSchema } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';  // 不缓存
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return NextResponse.json({
-      error: 'API not configured. Set GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN env vars.',
+      error: 'DATABASE_URL not set in Vercel env',
     }, { status: 503 });
   }
   try {
+    await ensureSchema();
     const langs = await listLayouts();
     return NextResponse.json({ langs });
   } catch (e: any) {

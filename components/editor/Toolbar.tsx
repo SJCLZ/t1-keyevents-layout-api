@@ -3,25 +3,18 @@
 import { useEditor, useTemporalStore } from '@/lib/store';
 
 const LABELS: Record<string, string> = {
-  sp: 'SP 西',
-  ar: 'AR 阿',
-  ja: 'JA 日',
-  en: 'EN 英',
-  vi: 'VI 越',
-  hi: 'HI 印',
-  kr: 'KR 韩',
-  th: 'TH 泰',
-  cn: 'CN 中',
+  sp: 'SP 西', ar: 'AR 阿', ja: 'JA 日', en: 'EN 英',
+  vi: 'VI 越', hi: 'HI 印', kr: 'KR 韩', th: 'TH 泰', cn: 'CN 中',
 };
 
 interface Props {
   lang: string;
   langs: string[];
   onLangChange: (l: string) => void;
-  onSave: () => void;
+  savingState: 'idle' | 'saving' | 'saved' | 'error';
 }
 
-export default function Toolbar({ lang, langs, onLangChange, onSave }: Props) {
+export default function Toolbar({ lang, langs, onLangChange, savingState }: Props) {
   const showingRef = useEditor((s) => s.showingRef);
   const toggleRef = useEditor((s) => s.toggleRef);
   const { undo, redo, pastStates, futureStates } = useTemporalStore((s) => s);
@@ -77,12 +70,11 @@ export default function Toolbar({ lang, langs, onLangChange, onSave }: Props) {
         {showingRef ? '🖼️ 原版参考' : '🎬 模板'}
       </button>
 
-      <button
-        onClick={onSave}
-        className="ml-auto px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
-      >
-        💾 写回 GitHub
-      </button>
+      <div className="ml-auto text-xs text-gray-500">
+        {savingState === 'saving' && '⏳ 自动保存中…'}
+        {savingState === 'saved' && '✓ 已自动保存'}
+        {savingState === 'error' && '✗ 保存失败'}
+      </div>
     </div>
   );
 }

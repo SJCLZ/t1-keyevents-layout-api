@@ -1,62 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readLayout, writeLayout, isConfigured } from '@/lib/github';
+import { readLayout, writeLayout, isConfigured, ensureSchema } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';  // 不缓存
+export const dynamic = 'force-dynamic';
 
 // GET /api/layouts/sp — 读 SP 模板
 export async function GET(
   _req: NextRequest,
   { params }: { params: { lang: string } },
 ) {
-  if (!isConfigured()) {
-    return NextResponse.json({
-      error: 'API not configured. Set GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN env vars.',
-    }, { status: 503 });
+  if (!(await isConfigured())) {
+    return NextResponse.json({ error: 'DATABASE_URL not set in Vercel env' }, { status: 503 });
   }
-  const { lang } = params;
   try {
-    const { data, sha } = await readLayout(lang);
-    // 加 ETag header,客户端 If-Match 头可走乐观锁
-    // 禁用 Vercel CDN 缓存(layout JSON 改了要立即生效)
-    return NextResponse.json(data, {
+    await ensureSchema();
+    const row = await readLayout(params.lang);
+    if (!row) {
+      return NextResponse.json({ error: `Layout ${params.lang} not found` }, { status: 404 });
+    }
+    return NextResponse.json(row.data, {
       headers: {
-        ETag: `"${sha}"`,
+        ETag: `"${row.sha}"`,
         'Cache-Control': 'no-store, max-age=0',
       },
     });
   } catch (e: any) {
-    if (e.status === 404) {
-      return NextResponse.json({ error: `Layout ${lang} not found` }, { status: 404 });
-    }
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
-// PUT /api/layouts/sp — 写 SP 模板(需要 sha 做乐观锁)
+// PUT /api/layouts/sp — 写 SP 模板(自动保存,带 ETag 乐观锁)
 export async function PUT(
   req: NextRequest,
   { params }: { params: { lang: string } },
 ) {
-  if (!isConfigured()) {
-    return NextResponse.json({ error: 'API not configured' }, { status: 503 });
+  if (!(await isConfigured())) {
+    return NextResponse.json({ error: 'DATABASE_URL not set in Vercel env' }, { status: 503 });
   }
-  const { lang } = params;
-  // 读 ETag header(乐观锁)
   const ifMatch = req.headers.get('If-Match');
-  const sha = ifMatch ? ifMatch.replace(/^"|"$/g, '') : undefined;
+  const expectedSha = ifMatch ? ifMatch.replace(/^"|"$/g, '') : undefined;
   try {
+    await ensureSchema();
     const body = await req.json();
-    const message = body.message || `Update ${lang}.json via API`;
-    const { sha: newSha } = await writeLayout(lang, body.data || body, message, sha);
+    const message = body.message || `Update ${params.lang}`;
+    const data = body.data || body;
+    const { sha } = await writeLayout(params.lang, data, message, expectedSha);
     return NextResponse.json(
-      { ok: true, sha: newSha, lang },
-      { headers: { ETag: `"${newSha}"` } },
+      { ok: true, sha, lang: params.lang },
+      { headers: { ETag: `"${sha}"`, 'Cache-Control': 'no-store, max-age=0' } },
     );
   } catch (e: any) {
-    if (e.status === 409 || (e.message || '').includes('does not match')) {
-      return NextResponse.json({
-        error: 'Conflict: sha mismatch (someone else updated this file). GET first, then retry.',
-      }, { status: 409 });
+    if (e.statusCode === 409) {
+      return NextResponse.json({ error: e.message }, { status: 409 });
     }
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
