@@ -57,6 +57,56 @@ function ensureDisclaimerElements(layout: any, language: string): any {
   return layout;
 }
 
+async function responseError(response: Response): Promise<string> {
+  const body = await response.json().catch(() => null);
+  return body?.error || `HTTP ${response.status}`;
+}
+
+async function saveLayoutWithConflictRecovery({
+  lang,
+  sha,
+  message,
+  data,
+  signal,
+}: {
+  lang: string;
+  sha: string;
+  message: string;
+  data: any;
+  signal?: AbortSignal;
+}): Promise<{ sha: string; recovered: boolean }> {
+  const put = (expectedSha: string) => fetch(`/api/layouts/${lang}`, {
+    method: 'PUT',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Layout-Sha': expectedSha,
+    },
+    body: JSON.stringify({ message, data }),
+  });
+
+  let response = await put(sha);
+  if (response.status !== 409) {
+    if (!response.ok) throw new Error(await responseError(response));
+    const saved = await response.json();
+    return { sha: saved.sha, recovered: false };
+  }
+
+  // Another tab or a deployment may have saved the same language after this
+  // page loaded. Refresh only the version token, then retry the current edits
+  // once so the user's in-page work is not discarded.
+  const latest = await fetch(`/api/layouts/${lang}`, { cache: 'no-store', signal });
+  if (!latest.ok) throw new Error(`版本刷新失败: ${await responseError(latest)}`);
+  const latestSha = (latest.headers.get('x-layout-sha') || latest.headers.get('etag') || '')
+    .replace(/^"|"$/g, '');
+  if (!latestSha) throw new Error('版本刷新失败: 缺少最新 SHA');
+
+  response = await put(latestSha);
+  if (!response.ok) throw new Error(await responseError(response));
+  const saved = await response.json();
+  return { sha: saved.sha, recovered: true };
+}
+
 export default function EditorPage() {
   const lang = useEditor((s) => s.lang);
   const langs = useEditor((s) => s.langs);  // v52+:从 API 拉,不硬编码
@@ -174,19 +224,12 @@ export default function EditorPage() {
         Object.entries(frameConfigs).map(([fid, fc]) => [fid, { ...layout.frames[fid], elements: fc.elements }]),
       );
       const currentHash = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
-      const saveResponse = await fetch('/api/layouts/en', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Layout-Sha': sha || '',
-        },
-        body: JSON.stringify({ message: 'Save EN before style sync', data: body }),
+      const saved = await saveLayoutWithConflictRecovery({
+        lang: 'en',
+        sha,
+        message: 'Save EN before style sync',
+        data: body,
       });
-      if (!saveResponse.ok) {
-        const error = await saveResponse.json();
-        throw new Error(error.error || `保存 EN 失败 (${saveResponse.status})`);
-      }
-      const saved = await saveResponse.json();
       setSha(saved.sha);
       lastSaved.current = currentHash;
 
@@ -228,25 +271,18 @@ export default function EditorPage() {
           // 使用当前 effect 捕获的快照，不读取切换语言后的全局 store。
           Object.entries(frameConfigs).map(([fid, fc]) => [fid, { ...layout.frames[fid], elements: fc.elements }]),
         );
-        const r = await fetch(`/api/layouts/${lang}`, {
-          method: 'PUT',
+        const saved = await saveLayoutWithConflictRecovery({
+          lang,
+          sha,
+          message: `Update ${lang} via editor`,
+          data: body,
           signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Layout-Sha': sha || '',
-          },
-          body: JSON.stringify({ message: `Update ${lang} via editor`, data: body }),
         });
-        if (!r.ok) {
-          const e = await r.json();
-          setStatus(`❌ 保存失败: ${e.error || r.status}`);
-          setSavingState('error');
-          return;
-        }
-        const { sha: newSha } = await r.json();
-        setSha(newSha);  // v52+:更新 store 里的 sha,避免下次 auto-save 用 stale 值 → 409
+        setSha(saved.sha);  // v52+:更新 store 里的 sha,避免下次 auto-save 用 stale 值 → 409
         lastSaved.current = cur;
-        setStatus(`✅ 已保存 ${new Date().toLocaleTimeString()}`);
+        setStatus(saved.recovered
+          ? `✅ 检测到服务器更新，已刷新版本并保存当前编辑 ${new Date().toLocaleTimeString()}`
+          : `✅ 已保存 ${new Date().toLocaleTimeString()}`);
         setSavingState('saved');
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
