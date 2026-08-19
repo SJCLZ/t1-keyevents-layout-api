@@ -1,0 +1,52 @@
+{
+  "template": "key_events",
+  "languages": ["en"],
+  "period": {
+    "start": "2026-07-27",
+    "end": "2026-07-31"
+  },
+  "header_title": "Key Market Events",
+  "intro_title_l1": "Key",
+  "intro_title_l2": "Market",
+  "intro_title_l3": "Events",
+  "outro_headline_l1": "Stay ahead.",
+  "outro_headline_l2": "Stay informed.",
+  "outro_subline_l1": "For more details,",
+  "outro_subline_l2": "follow us on social media.",
+  "outro_url": "startrader.com",
+  "disclaimer_l1": "Trading in derivatives can be of a high level of risk",
+  "disclaimer_l2": "and may not be suitable for all persons.",
+  "events": [
+    {
+      "date": "2026-07-27",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Durable goods orders in the US are expected to rise 1.6% in June."
+    },
+    {
+      "date": "2026-07-28",
+      "currency": "USD",
+      "impact": "high",
+      "body": "US Consumer Confidence Index is expected to rise from 91.2 to 92.1."
+    },
+    {
+      "date": "2026-07-29",
+      "currency": "USD",
+      "impact": "high",
+      "body": "The US Federal Reserve is expected to keep interest rates unchanged at 3.75%."
+    },
+    {
+      "date": "2026-07-30",
+      "currency": "USD",
+      "impact": "medium",
+      "body": "The Producer Price Index is expected to fall 0.1% month-over-month, versus 0.3% in the previous month."
+    },
+    {
+      "date": "2026-07-31",
+      "currency": "JPY",
+      "impact": "high",
+      "body": "The Bank of Japan is expected to keep interest rates unchanged at 1%."
+    }
+  ],
+  "bgm_id": "default"
+}

@@ -1,19 +1,23 @@
-import { Pool, neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 
-// v52+:globalThis 缓存 pool,避免 Next.js dev HMR 重复创建导致 Neon serverless 连接泄漏
+// v52+:globalThis 缓存 pool,Next.js dev HMR 不重复创建
 declare global {
   // eslint-disable-next-line no-var
-  var __neonPool: Pool | undefined;
+  var __pgPool: Pool | undefined;
 }
 
 function pool() {
-  if (!globalThis.__neonPool) {
+  if (!globalThis.__pgPool) {
     if (!DATABASE_URL) throw new Error('DATABASE_URL not set');
-    globalThis.__neonPool = new Pool({ connectionString: DATABASE_URL });
+    globalThis.__pgPool = new Pool({
+      connectionString: DATABASE_URL,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+    });
   }
-  return globalThis.__neonPool!;
+  return globalThis.__pgPool!;
 }
 
 export interface LayoutRow {
@@ -33,10 +37,10 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS assets (
     id SERIAL PRIMARY KEY,
     lang TEXT NOT NULL,
-    type TEXT NOT NULL,         -- logo / font / gt_frame
-    name TEXT NOT NULL,         -- startrader_logo_official.png / t003.000.png / ...
+    type TEXT NOT NULL,
+    name TEXT NOT NULL,
     data BYTEA NOT NULL,
-    content_type TEXT NOT NULL, -- image/png / font/ttf
+    content_type TEXT NOT NULL,
     size INTEGER NOT NULL,
     sha TEXT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -49,7 +53,53 @@ export async function ensureSchema(): Promise<void> {
   await pool().query(SCHEMA);
 }
 
-// ============= Assets CRUD =============
+export async function listLayouts(): Promise<string[]> {
+  const { rows } = await pool().query('SELECT lang FROM layouts ORDER BY lang');
+  return rows.map((r: any) => r.lang as string);
+}
+
+export async function readLayout(lang: string): Promise<{ data: any; sha: string } | null> {
+  const { rows } = await pool().query(
+    'SELECT data, sha FROM layouts WHERE lang = $1 LIMIT 1',
+    [lang],
+  );
+  if (rows.length === 0) return null;
+  return { data: rows[0].data, sha: rows[0].sha };
+}
+
+export async function writeLayout(
+  lang: string,
+  data: any,
+  message: string,
+  expectedSha?: string,
+): Promise<{ sha: string }> {
+  if (expectedSha) {
+    const { rows: cur } = await pool().query(
+      'SELECT sha FROM layouts WHERE lang = $1 LIMIT 1',
+      [lang],
+    );
+    if (cur.length > 0 && cur[0].sha !== expectedSha) {
+      throw Object.assign(new Error('Conflict: sha mismatch'), { statusCode: 409 });
+    }
+  }
+  const sha = new Date().toISOString();
+  const updatedAt = sha;
+
+  await pool().query(
+    `INSERT INTO layouts (lang, data, sha, updated_at)
+     VALUES ($1, $2::jsonb, $3, $4)
+     ON CONFLICT (lang) DO UPDATE SET
+       data = EXCLUDED.data,
+       sha = EXCLUDED.sha,
+       updated_at = EXCLUDED.updated_at`,
+    [lang, JSON.stringify(data), sha, updatedAt],
+  );
+  return { sha };
+}
+
+export async function isConfigured(): Promise<boolean> {
+  return !!DATABASE_URL;
+}
 
 export interface AssetRow {
   id: number;
@@ -104,49 +154,4 @@ export async function upsertAsset(
     [lang, type, name, data, contentType, size, sha],
   );
   return { sha, size };
-}
-
-export async function listLayouts(): Promise<string[]> {
-  const { rows } = await pool().query('SELECT lang FROM layouts ORDER BY lang');
-  return rows.map((r: any) => r.lang as string);
-}
-
-export async function readLayout(lang: string): Promise<{ data: any; sha: string } | null> {
-  const { rows } = await pool().query(
-    'SELECT data, sha FROM layouts WHERE lang = $1 LIMIT 1',
-    [lang],
-  );
-  if (rows.length === 0) return null;
-  return { data: rows[0].data, sha: rows[0].sha };
-}
-
-export async function writeLayout(
-  lang: string,
-  data: any,
-  message: string,
-  expectedSha?: string,
-): Promise<{ sha: string }> {
-  if (expectedSha) {
-    // 乐观锁:检查 sha 是否匹配
-    const { rows: cur } = await pool().query(
-      'SELECT sha FROM layouts WHERE lang = $1 LIMIT 1',
-      [lang],
-    );
-    if (cur.length > 0 && cur[0].sha !== expectedSha) {
-      throw Object.assign(new Error('Conflict: sha mismatch'), { statusCode: 409 });
-    }
-  }
-  // 新 sha = 时间戳(用作乐观锁)
-  const sha = new Date().toISOString();
-  const updatedAt = sha;
-
-  await pool().query(
-    'INSERT INTO layouts (lang, data, sha, updated_at) VALUES ($1, $2::jsonb, $3, $4) ON CONFLICT (lang) DO UPDATE SET data = EXCLUDED.data, sha = EXCLUDED.sha, updated_at = EXCLUDED.updated_at',
-    [lang, JSON.stringify(data), sha, updatedAt],
-  );
-  return { sha };
-}
-
-export async function isConfigured(): Promise<boolean> {
-  return !!DATABASE_URL;
 }

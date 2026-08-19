@@ -17,8 +17,8 @@ export default function Canvas() {
   }
 
   return (
-    <div className="flex-1 overflow-auto p-6 bg-gray-50">
-      <div className="grid grid-cols-3 gap-5 w-fit">
+    <div className="flex-1 min-w-0 overflow-auto p-6 bg-gray-50">
+      <div className="grid grid-cols-[repeat(3,360px)] gap-5 w-max">
         {frames.map((fid, i) => (
           <Frame
             key={fid}

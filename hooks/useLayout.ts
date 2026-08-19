@@ -15,7 +15,7 @@ export function useLayout(lang: string, setStatus: (s: string) => void) {
     let abort = false;
     setLoading(true);
     setError(null);
-    fetch(`${API}/api/layouts/${lang}`)
+    fetch(`${API}/api/layouts/${lang}`, { cache: 'no-store' })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const etag = r.headers.get('etag') || '';
@@ -41,6 +41,7 @@ export function useLayout(lang: string, setStatus: (s: string) => void) {
       .catch((e) => {
         if (abort) return;
         setError(e.message);
+        setStatus(`❌ 加载失败: ${e.message}`);
       })
       .finally(() => setLoading(false));
     return () => { abort = true; };

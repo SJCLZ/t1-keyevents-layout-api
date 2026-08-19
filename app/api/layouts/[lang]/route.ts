@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readLayout, writeLayout, isConfigured, ensureSchema } from '@/lib/db';
 
+// v52+:Edge runtime — Neon serverless HTTP 传输,本地 dev 稳定(避免 Node WS 池问题)
 export const dynamic = 'force-dynamic';
 
 // GET /api/layouts/sp — 读 SP 模板

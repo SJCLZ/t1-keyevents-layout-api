@@ -8,7 +8,7 @@
  * 或者本地有 DATABASE_URL 配 .env.local 后跑
  */
 import { config } from 'dotenv';
-import { neon } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 
 config({ path: '.env.local' });
 
@@ -22,16 +22,16 @@ async function main() {
     console.error('❌ DATABASE_URL not set');
     process.exit(1);
   }
-  const sql = neon(url);
+  const pool = new Pool({ connectionString: url });
 
   // 1. 建表
   console.log('🔧 CREATE TABLE...');
-  await sql`CREATE TABLE IF NOT EXISTS layouts (
-    lang TEXT PRIMARY KEY,
-    data JSONB NOT NULL,
-    sha TEXT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-  )`;
+  await pool.query(`CREATE TABLE IF NOT EXISTS layouts (
+      lang TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      sha TEXT NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`);
 
   // 2. 从 GitHub raw 拉 9 个 layouts
   for (const lang of LANGS) {
@@ -45,21 +45,23 @@ async function main() {
     const data = await resp.json();
     const sha = new Date().toISOString();
 
-    await sql`
-      INSERT INTO layouts (lang, data, sha, updated_at)
-      VALUES (${lang}, ${JSON.stringify(data)}, ${sha}, NOW())
-      ON CONFLICT (lang) DO UPDATE SET
-        data = EXCLUDED.data,
-        sha = EXCLUDED.sha,
-        updated_at = EXCLUDED.updated_at
-    `;
+    await pool.query(
+      `INSERT INTO layouts (lang, data, sha, updated_at)
+       VALUES ($1, $2::jsonb, $3, NOW())
+       ON CONFLICT (lang) DO UPDATE SET
+         data = EXCLUDED.data,
+         sha = EXCLUDED.sha,
+         updated_at = EXCLUDED.updated_at`,
+      [lang, JSON.stringify(data), sha],
+    );
     console.log(`  ✅ ${lang}: ${Object.keys(data.frames || {}).length} frames`);
   }
 
   // 3. 验证
-  const rows = await sql`SELECT lang FROM layouts ORDER BY lang`;
+  const { rows } = await pool.query('SELECT lang FROM layouts ORDER BY lang');
   console.log(`\n✅ Migration done. ${rows.length} layouts in DB:`);
-  rows.forEach((r) => console.log(`  - ${r.lang}`));
+  rows.forEach((r: { lang: string }) => console.log(`  - ${r.lang}`));
+  await pool.end();
 }
 
 main().catch((e) => {

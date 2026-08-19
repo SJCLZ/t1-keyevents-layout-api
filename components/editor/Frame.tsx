@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Element from './Element';
 import { useEditor } from '@/lib/store';
 
@@ -15,6 +16,28 @@ const LABELS: Record<string, string> = {
 
 const SCALE = 360 / 1080;
 
+function fixedGuidePositions(elements: Record<string, any>, axis: 'x' | 'y'): number[] {
+  const positions = Object.values(elements).flatMap((element: any) => {
+    if (![element?.x, element?.y, element?.w, element?.h].every(Number.isFinite)) return [];
+    return axis === 'x' ? [element.x] : [element.y];
+  }).sort((a, b) => a - b);
+  // Avoid drawing several heavy lines for near-identical text edges (for example x=152/155).
+  return positions.reduce<number[]>((unique, position) => {
+    if (unique.length === 0 || Math.abs(position - unique[unique.length - 1]) > 6) unique.push(position);
+    return unique;
+  }, []);
+}
+
+const REF_FRAME_FILES: Record<string, string> = {
+  t002: 't003.000.png',
+  t004: 't004.000.png',
+  t011: 't011.000.png',
+  t018: 't018.000.png',
+  t025: 't025.000.png',
+  t032: 't032.000.png',
+  t042: 't042.000.png',
+};
+
 interface Props {
   fid: string;
   index: number;
@@ -24,12 +47,28 @@ interface Props {
 export default function Frame({ fid, showingRef }: Props) {
   const lang = useEditor((s) => s.lang);
   const layout = useEditor((s) => s.layout);
+  // v52+:订阅整个 frameConfigs,确保 textAlign 等字段变化触发 Element re-render
+  useEditor((s) => s.frameConfigs);
   const elements = useEditor((s) => s.frameConfigs[fid]?.elements || {});
   const setSelected = useEditor((s) => s.setSelected);
+  const snapGuides = useEditor((s) => s.snapGuides?.fid === fid ? s.snapGuides : null);
+  const showingGuides = useEditor((s) => s.showingGuides);
+  const [refFailed, setRefFailed] = useState(false);
+  // 原版对比图与语言、帧一一对应，优先使用项目内资源，不依赖外部 URL。
+  const refFramePath = REF_FRAME_FILES[fid]
+    ? `/assets/${lang}/gt_frames/${REF_FRAME_FILES[fid]}`
+    : layout?.frames?.[fid]?.gt_frame_path;
+
+  useEffect(() => {
+    setRefFailed(false);
+  }, [refFramePath]);
 
   if (!layout) return null;
   const videoSrc = layout.video_src;
-  const refFramePath = layout.frames?.[fid]?.gt_frame_path;
+  const hasReference = Boolean(refFramePath) && !refFailed;
+  const referenceElements = layout.frames?.[fid]?.elements || {};
+  const fixedXGuides = showingGuides ? fixedGuidePositions(referenceElements, 'x') : [];
+  const fixedYGuides = showingGuides ? fixedGuidePositions(referenceElements, 'y') : [];
 
   return (
     <div
@@ -41,11 +80,12 @@ export default function Frame({ fid, showingRef }: Props) {
         {fid} · {LABELS[fid] || ''}
       </div>
 
-      {showingRef && refFramePath ? (
+      {showingRef && hasReference ? (
         <img
           src={refFramePath}
-          alt="GT"
+          alt={`原版参考 ${fid}`}
           loading="lazy"
+          onError={() => setRefFailed(true)}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
       ) : (
@@ -56,6 +96,44 @@ export default function Frame({ fid, showingRef }: Props) {
           loop
           playsInline
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        />
+      )}
+
+      {showingRef && !hasReference && (
+        <div className="absolute top-2 right-2 z-10 rounded bg-amber-50/95 px-2 py-1 text-[10px] font-medium text-amber-700 shadow-sm pointer-events-none">
+          待添加原版参考图
+        </div>
+      )}
+
+      {fixedXGuides.map((x) => (
+        <div
+          key={`fixed-x-${x}`}
+          data-guide-axis="vertical"
+          className="absolute inset-y-0 z-20 w-px bg-red-500/70 pointer-events-none"
+          style={{ left: x * SCALE }}
+        />
+      ))}
+      {fixedYGuides.map((y) => (
+        <div
+          key={`fixed-y-${y}`}
+          data-guide-axis="horizontal"
+          className="absolute inset-x-0 z-20 h-px bg-red-500/70 pointer-events-none"
+          style={{ top: y * SCALE }}
+        />
+      ))}
+
+      {(showingRef || showingGuides) && snapGuides?.x !== null && snapGuides?.x !== undefined && (
+        <div
+          data-guide-axis="vertical"
+          className="absolute inset-y-0 z-20 w-px bg-red-600 shadow-[0_0_0_1px_rgba(220,38,38,0.35)] pointer-events-none"
+          style={{ left: snapGuides.x * SCALE }}
+        />
+      )}
+      {(showingRef || showingGuides) && snapGuides?.y !== null && snapGuides?.y !== undefined && (
+        <div
+          data-guide-axis="horizontal"
+          className="absolute inset-x-0 z-20 h-px bg-red-600 shadow-[0_0_0_1px_rgba(220,38,38,0.35)] pointer-events-none"
+          style={{ top: snapGuides.y * SCALE }}
         />
       )}
 

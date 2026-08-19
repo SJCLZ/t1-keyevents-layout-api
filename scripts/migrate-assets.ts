@@ -5,7 +5,7 @@
  * 用法:DATABASE_URL=... npx tsx scripts/migrate-assets.ts
  */
 import { config } from 'dotenv';
-import { Pool } from '@neondatabase/serverless';
+import { Pool } from 'pg';
 
 config({ path: '.env.local' });
 
@@ -145,6 +145,7 @@ async function main() {
   );
   console.log(`\n✅ Migration done. ${total[0].n} assets:`);
   byType.forEach((r: any) => console.log(`  ${r.type}: ${r.n} files, ${(r.total_bytes / 1024 / 1024).toFixed(2)} MB`));
+  await pool.end();
 }
 
 main().catch((e) => {

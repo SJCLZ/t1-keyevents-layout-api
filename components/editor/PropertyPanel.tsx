@@ -9,12 +9,24 @@ export default function PropertyPanel() {
     fid && eid ? (s.frameConfigs[fid]?.elements?.[eid] as any) : null,
   );
   const updateElement = useEditor((s) => s.updateElement);
+  const disclaimerL1 = useEditor((s) => fid ? s.frameConfigs[fid]?.elements?.disclaimer_l1?.text || '' : '');
+  const disclaimerL2 = useEditor((s) => fid ? s.frameConfigs[fid]?.elements?.disclaimer_l2?.text || '' : '');
+  const hasDisclaimer = useEditor((s) => Boolean(fid && s.frameConfigs[fid]?.elements?.disclaimer_l1));
 
   if (!fid || !eid || !element) {
     return (
       <div className="w-72 bg-white border-l border-gray-200 p-5">
         <div className="text-xs text-gray-400">点击元素查看属性</div>
         <div className="mt-3 text-xs text-gray-300">快捷键:Ctrl+Shift+&gt; 增大字号</div>
+        {fid && hasDisclaimer && (
+          <DisclaimerFields
+            frameId={fid}
+            line1={disclaimerL1}
+            line2={disclaimerL2}
+            onLine1={(value) => updateElement(fid, 'disclaimer_l1', 'text', value)}
+            onLine2={(value) => updateElement(fid, 'disclaimer_l2', 'text', value)}
+          />
+        )}
       </div>
     );
   }
@@ -45,7 +57,7 @@ export default function PropertyPanel() {
       {element.line_pitch !== undefined && (
         <Field label="行距" value={element.line_pitch} onChange={(v) => onChange('line_pitch', v)} />
       )}
-      {element.text !== undefined && (
+      {element.text !== undefined && !['disclaimer_l1', 'disclaimer_l2'].includes(eid) && (
         <div className="mt-3">
           <label className="text-xs text-gray-500 block mb-1">文字</label>
           <textarea
@@ -56,6 +68,50 @@ export default function PropertyPanel() {
           />
         </div>
       )}
+      {hasDisclaimer && (
+        <DisclaimerFields
+          frameId={fid}
+          line1={disclaimerL1}
+          line2={disclaimerL2}
+          onLine1={(value) => updateElement(fid, 'disclaimer_l1', 'text', value)}
+          onLine2={(value) => updateElement(fid, 'disclaimer_l2', 'text', value)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DisclaimerFields({
+  frameId,
+  line1,
+  line2,
+  onLine1,
+  onLine2,
+}: {
+  frameId: string;
+  line1: string;
+  line2: string;
+  onLine1: (value: string) => void;
+  onLine2: (value: string) => void;
+}) {
+  return (
+    <div className="mt-5 border-t border-gray-200 pt-4">
+      <h3 className="mb-3 text-xs font-semibold text-gray-700">底部声明 · {frameId}</h3>
+      <label className="mb-1 block text-xs text-gray-500">disclaimer_l1</label>
+      <textarea
+        value={line1}
+        onChange={(event) => onLine1(event.target.value)}
+        rows={3}
+        className="mb-3 w-full rounded border border-gray-300 px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+      />
+      <label className="mb-1 block text-xs text-gray-500">disclaimer_l2</label>
+      <textarea
+        value={line2}
+        onChange={(event) => onLine2(event.target.value)}
+        rows={3}
+        placeholder="官方表当前为空，可单独编辑"
+        className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+      />
     </div>
   );
 }
