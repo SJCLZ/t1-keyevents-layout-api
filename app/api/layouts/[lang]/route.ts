@@ -37,8 +37,10 @@ export async function PUT(
   if (!(await isConfigured())) {
     return NextResponse.json({ error: 'DATABASE_URL not set in Vercel env' }, { status: 503 });
   }
-  const ifMatch = req.headers.get('If-Match');
-  const expectedSha = ifMatch ? ifMatch.replace(/^"|"$/g, '') : undefined;
+  // Use an application-specific version header so hosting/CDN layers do not
+  // interpret or rewrite the value as an HTTP cache precondition.
+  const versionHeader = req.headers.get('X-Layout-Sha') || req.headers.get('If-Match');
+  const expectedSha = versionHeader ? versionHeader.replace(/^"|"$/g, '') : undefined;
   try {
     await ensureSchema();
     const body = await req.json();

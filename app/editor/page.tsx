@@ -174,7 +174,7 @@ export default function EditorPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'If-Match': sha ? `"${sha}"` : '',
+          'X-Layout-Sha': sha || '',
         },
         body: JSON.stringify({ message: 'Save EN before style sync', data: body }),
       });
@@ -229,7 +229,7 @@ export default function EditorPage() {
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
-            'If-Match': sha ? `"${sha}"` : '',
+            'X-Layout-Sha': sha || '',
           },
           body: JSON.stringify({ message: `Update ${lang} via editor`, data: body }),
         });
