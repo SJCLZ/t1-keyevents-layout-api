@@ -1,0 +1,53 @@
+{
+  "template": "key_events",
+  "period": {
+    "start": "2026-08-03",
+    "end": "2026-08-07"
+  },
+  "outro_url": "startrader.com",
+  "disclaimer_l2": "",
+  "languages": [
+    "vi"
+  ],
+  "header_title": "Sự Kiện Thị Trường Quan Trọng",
+  "intro_title_l1": "Sự Kiện",
+  "intro_title_l2": "Quan Trọng",
+  "intro_title_l3": "Tuần Này",
+  "outro_headline_l1": "Theo dõi cập nhật mới nhất.",
+  "outro_headline_l2": "Đừng bỏ lỡ biến động thị trường.",
+  "outro_subline_l1": "Để biết thêm chi tiết,",
+  "outro_subline_l2": "theo dõi chúng tôi trên mạng xã hội.",
+  "disclaimer_l1": "Giao dịch CFD tiềm ẩn mức độ rủi ro cao.",
+  "events": [
+    {
+      "date": "2026-08-03",
+      "currency": "USD",
+      "impact": "high",
+      "body": "PMI sản xuất ISM của Mỹ dự kiến tăng từ 53,3 trong tháng 6 lên 54,0 trong tháng 7."
+    },
+    {
+      "date": "2026-08-04",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Số vị trí tuyển dụng JOLTS của Mỹ dự kiến giảm nhẹ từ 7,59 triệu trong tháng 5 xuống 7,42 triệu trong tháng 6."
+    },
+    {
+      "date": "2026-08-05",
+      "currency": "AUD",
+      "impact": "medium",
+      "body": "Tỷ lệ thất nghiệp của Úc được dự báo tăng nhẹ từ 5,3% lên 5,4%."
+    },
+    {
+      "date": "2026-08-06",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Số đơn xin trợ cấp thất nghiệp hàng tuần của Mỹ có thể tăng từ 197.000 lên 205.000."
+    },
+    {
+      "date": "2026-08-07",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Nhà đầu tư sẽ theo dõi sát số liệu việc làm phi nông nghiệp của Mỹ để đánh giá động thái tiếp theo của Fed."
+    }
+  ]
+}

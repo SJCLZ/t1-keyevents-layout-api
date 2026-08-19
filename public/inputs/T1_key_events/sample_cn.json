@@ -1,0 +1,53 @@
+{
+  "template": "key_events",
+  "period": {
+    "start": "2026-08-03",
+    "end": "2026-08-07"
+  },
+  "outro_url": "startrader.com",
+  "disclaimer_l2": "",
+  "languages": [
+    "cn"
+  ],
+  "header_title": "本周关键事件",
+  "intro_title_l1": "本周",
+  "intro_title_l2": "关键",
+  "intro_title_l3": "事件",
+  "outro_headline_l1": "关注最新动态。",
+  "outro_headline_l2": "不要错过市场动向。",
+  "outro_subline_l1": "了解更多详情,",
+  "outro_subline_l2": "请关注我们的社交媒体。",
+  "disclaimer_l1": "差价合约（CFDs）交易具有高风险。",
+  "events": [
+    {
+      "date": "2026-08-03",
+      "currency": "USD",
+      "impact": "high",
+      "body": "美国 ISM 制造业 PMI 预计将从6月的53.3升至7月的54.0。"
+    },
+    {
+      "date": "2026-08-04",
+      "currency": "USD",
+      "impact": "high",
+      "body": "美国 JOLTS 职位空缺预计将从5月的759万小幅降至6月的742万。"
+    },
+    {
+      "date": "2026-08-05",
+      "currency": "AUD",
+      "impact": "medium",
+      "body": "澳大利亚失业率预计将从5.3%小幅升至5.4%。"
+    },
+    {
+      "date": "2026-08-06",
+      "currency": "USD",
+      "impact": "high",
+      "body": "美国每周初请失业金人数预计将从前一周的19.7万增至20.5万。"
+    },
+    {
+      "date": "2026-08-07",
+      "currency": "USD",
+      "impact": "high",
+      "body": "投资者将密切关注美国非农就业数据，以判断美联储的下一步行动。"
+    }
+  ]
+}

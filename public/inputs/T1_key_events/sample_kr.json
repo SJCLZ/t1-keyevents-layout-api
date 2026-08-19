@@ -1,0 +1,53 @@
+{
+  "template": "key_events",
+  "period": {
+    "start": "2026-08-03",
+    "end": "2026-08-07"
+  },
+  "outro_url": "startrader.com",
+  "disclaimer_l2": "",
+  "languages": [
+    "kr"
+  ],
+  "header_title": "주요 시장 이벤트",
+  "intro_title_l1": "이번주",
+  "intro_title_l2": "주요",
+  "intro_title_l3": "이벤트",
+  "outro_headline_l1": "최신 업데이트를 받아보세요.",
+  "outro_headline_l2": "시장 동향을 놓치지 마세요.",
+  "outro_subline_l1": "자세한 내용은,",
+  "outro_subline_l2": "소셜 미디어에서 팔로우하세요.",
+  "disclaimer_l1": "CFD(차액결제거래) 거래는 높은 수준의 위험을 수반합니다.",
+  "events": [
+    {
+      "date": "2026-08-03",
+      "currency": "USD",
+      "impact": "high",
+      "body": "미국 ISM 제조업 PMI는 6월 53.3에서 7월 54.0으로 상승할 것으로 예상됩니다."
+    },
+    {
+      "date": "2026-08-04",
+      "currency": "USD",
+      "impact": "high",
+      "body": "미국 JOLTS 구인 건수는 5월 759만 건에서 6월 742만 건으로 소폭 감소할 것으로 예상됩니다."
+    },
+    {
+      "date": "2026-08-05",
+      "currency": "AUD",
+      "impact": "medium",
+      "body": "호주 실업률은 5.3%에서 5.4%로 소폭 상승할 전망입니다."
+    },
+    {
+      "date": "2026-08-06",
+      "currency": "USD",
+      "impact": "high",
+      "body": "미국 주간 신규 실업수당 청구 건수는 전주 19만 7천 건에서 20만 5천 건으로 증가할 것으로 예상됩니다."
+    },
+    {
+      "date": "2026-08-07",
+      "currency": "USD",
+      "impact": "high",
+      "body": "투자자들은 연준의 다음 행보를 가늠하기 위해 미국 비농업 고용지표를 면밀히 지켜볼 것입니다."
+    }
+  ]
+}

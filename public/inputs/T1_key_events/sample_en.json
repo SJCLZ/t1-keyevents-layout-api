@@ -1,52 +1,53 @@
 {
   "template": "key_events",
-  "languages": ["en"],
   "period": {
-    "start": "2026-07-27",
-    "end": "2026-07-31"
+    "start": "2026-08-03",
+    "end": "2026-08-07"
   },
-  "header_title": "Key Market Events",
-  "intro_title_l1": "Key",
-  "intro_title_l2": "Market",
-  "intro_title_l3": "Events",
-  "outro_headline_l1": "Stay ahead.",
-  "outro_headline_l2": "Stay informed.",
-  "outro_subline_l1": "For more details,",
-  "outro_subline_l2": "follow us on social media.",
   "outro_url": "startrader.com",
-  "disclaimer_l1": "Trading in derivatives can be of a high level of risk",
-  "disclaimer_l2": "and may not be suitable for all persons.",
+  "disclaimer_l2": "",
+  "languages": [
+    "en"
+  ],
+  "header_title": "Key Events of the Week",
+  "intro_title_l1": "Key",
+  "intro_title_l2": "Events",
+  "intro_title_l3": "This Week",
+  "outro_headline_l1": "Stay informed.",
+  "outro_headline_l2": "Stay ahead.",
+  "outro_subline_l1": "For more updates,",
+  "outro_subline_l2": "follow us on social media.",
+  "disclaimer_l1": "Trading CFDs carries a high level of risk",
   "events": [
     {
-      "date": "2026-07-27",
+      "date": "2026-08-03",
       "currency": "USD",
       "impact": "high",
-      "body": "Durable goods orders in the US are expected to rise 1.6% in June."
+      "body": "ISM Manufacturing PMI in the United States is expected to rise from 53.3 in June to 54.0 in July"
     },
     {
-      "date": "2026-07-28",
+      "date": "2026-08-04",
       "currency": "USD",
       "impact": "high",
-      "body": "US Consumer Confidence Index is expected to rise from 91.2 to 92.1."
+      "body": "JOLTS Job Openings in the US are expected to decline slightly to 7.42m in June from 7.59m in May"
     },
     {
-      "date": "2026-07-29",
-      "currency": "USD",
-      "impact": "high",
-      "body": "The US Federal Reserve is expected to keep interest rates unchanged at 3.75%."
-    },
-    {
-      "date": "2026-07-30",
-      "currency": "USD",
+      "date": "2026-08-05",
+      "currency": "AUD",
       "impact": "medium",
-      "body": "The Producer Price Index is expected to fall 0.1% month-over-month, versus 0.3% in the previous month."
+      "body": "Unemployment Rate in Australia is forecasted to tick higher from 5.3% to 5.4%"
     },
     {
-      "date": "2026-07-31",
-      "currency": "JPY",
+      "date": "2026-08-06",
+      "currency": "USD",
       "impact": "high",
-      "body": "The Bank of Japan is expected to keep interest rates unchanged at 1%."
+      "body": "Weekly US Unemployment Claims are likely to increase to 205K from 197K in the previous week"
+    },
+    {
+      "date": "2026-08-07",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Investors will closely monitor Non-Farm Payroll numbers from the US to gauge the Fed next move"
     }
-  ],
-  "bgm_id": "default"
+  ]
 }

@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAsset, isConfigured, ensureSchema } from '@/lib/db';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 
 // 资源内容会更新，不使用静态路由缓存。
 export const dynamic = 'force-dynamic';
+
+function streamBuffer(data: Buffer): ReadableStream<Uint8Array> {
+  const chunkSize = 64 * 1024;
+  let offset = 0;
+  return new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (offset >= data.length) {
+        controller.close();
+        return;
+      }
+      const end = Math.min(offset + chunkSize, data.length);
+      controller.enqueue(new Uint8Array(data.buffer, data.byteOffset + offset, end - offset));
+      offset = end;
+    },
+  });
+}
 
 // GET /api/assets/logo/sp/startrader_logo_official.png
 export async function GET(
@@ -14,38 +28,23 @@ export async function GET(
   try {
     const { type, lang, name } = params;
 
-    // 优先从数据库读取；本地/新部署尚未迁移 assets 时，logo 回退到 public。
-    if (await isConfigured()) {
-      await ensureSchema();
-      const asset = await getAsset(lang, type, name);
-      if (asset) {
-        const body = new Uint8Array(asset.data);
-        return new NextResponse(body, {
-          status: 200,
-          headers: {
-            'Content-Type': asset.content_type,
-            'Content-Length': String(asset.size),
-            'Cache-Control': 'public, max-age=3600',
-            'ETag': `"${asset.sha}"`,
-          },
-        });
-      }
+    if (!(await isConfigured())) {
+      return NextResponse.json({ error: 'DATABASE_URL not set' }, { status: 503 });
     }
-
-    if (type === 'logo' && name === 'startrader_logo_official.png' && /^[a-z]{2}$/.test(lang)) {
-      try {
-        const data = await readFile(join(process.cwd(), 'public', 'assets', lang, 'logo.png'));
-        return new NextResponse(new Uint8Array(data), {
-          status: 200,
-          headers: {
-            'Content-Type': 'image/png',
-            'Content-Length': String(data.length),
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
-      } catch {
-        // 统一在下方返回 404。
-      }
+    await ensureSchema();
+    const asset = await getAsset(lang, type, name);
+    if (asset) {
+      // Stream large CJK fonts so Vercel does not buffer them into the 4.5 MB
+      // function response payload limit.
+      return new NextResponse(streamBuffer(asset.data), {
+        status: 200,
+        headers: {
+          'Content-Type': asset.content_type,
+          'Cache-Control': 'public, max-age=3600',
+          'ETag': `"${asset.sha}"`,
+          'X-Asset-Source': 'database',
+        },
+      });
     }
 
     return NextResponse.json({ error: `Asset ${lang}/${type}/${name} not found` }, { status: 404 });

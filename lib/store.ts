@@ -88,10 +88,13 @@ function inputPeriod(start: string, end: string, lang: string): string {
   const sameMonth = s.month === e.month;
   if (lang === 'sp') return `${s.day} de ${s.month}${locale.periodSep}${e.day} de ${e.month}`;
   if (lang === 'en') return sameMonth ? `${s.day}${locale.periodSep}${e.day} ${e.month}` : `${s.day} ${s.month}${locale.periodSep}${e.day} ${e.month}`;
-  if (lang === 'ja' || lang === 'kr') return `${s.month}${s.day}日${locale.periodSep}${e.month}${e.day}日`;
+  if (lang === 'ja') return `${s.month}${s.day}日${locale.periodSep}${e.month}${e.day}日`;
+  if (lang === 'kr') return `${s.month} ${s.day}일${locale.periodSep}${e.month} ${e.day}일`;
   if (lang === 'th') return sameMonth ? `${s.day}${locale.periodSep}${e.day} ${e.month}` : `${s.day} ${s.month}${locale.periodSep}${e.day} ${e.month}`;
   if (lang === 'vi') return `${s.day}/${start.slice(5, 7)}${locale.periodSep}${e.day}/${end.slice(5, 7)}/${end.slice(0, 4)}`;
-  if (lang === 'ar') return sameMonth ? `${e.day}${locale.periodSep}${s.day} ${s.month}` : `${e.day} ${e.month}${locale.periodSep}${s.day} ${s.month}`;
+  if (lang === 'ar') return sameMonth ? `${s.day}${locale.periodSep}${e.day} ${e.month}` : `${s.day} ${s.month}${locale.periodSep}${e.day} ${e.month}`;
+  if (lang === 'cn') return `${s.month}${s.day}日${locale.periodSep}${e.month}${e.day}日`;
+  if (lang === 'hi') return sameMonth ? `${s.day}${locale.periodSep}${e.day} ${e.month}` : `${s.day} ${s.month}${locale.periodSep}${e.day} ${e.month}`;
   return `${s.day}${locale.periodSep}${e.day}`;
 }
 
@@ -125,6 +128,7 @@ interface EditorState {
   setLangs: (langs: string[]) => void;
   loadLayout: (data: any, sha: string) => void;
   setSha: (sha: string) => void;
+  setInputSignature: (signature: string) => void;
   setStatus: (s: string) => void;
   setSelected: (fid: FrameId | null, eid: string | null, multi?: boolean) => void;
   toggleRef: () => void;
@@ -181,6 +185,9 @@ export const useEditor = create<EditorState>()(
       },
 
       setSha: (sha) => set({ sha }),
+      setInputSignature: (signature) => set((s) => s.layout ? {
+        layout: { ...s.layout, _input_signature: signature, _placeholder: false },
+      } : s),
       setStatus: (s) => set({ status: s }),
       toggleRef: () => set((s) => ({ showingRef: !s.showingRef, snapGuides: null })),
       toggleGuides: () => set((s) => ({ showingGuides: !s.showingGuides, snapGuides: null })),
@@ -336,8 +343,8 @@ export const useEditor = create<EditorState>()(
         updateText('t042', 'subline2', input.outroSublineL2);
         updateText('t042', 'url', input.outroUrl);
         Object.keys(frameConfigs).forEach((fid) => {
-          updateText(fid, 'disclaimer_l1', input.disclaimerL1 || getOfficialPictureRiskWarning(s.lang));
-          updateText(fid, 'disclaimer_l2', input.disclaimerL2 || '');
+          updateText(fid, 'disclaimer_l1', getOfficialPictureRiskWarning(s.lang));
+          updateText(fid, 'disclaimer_l2', '');
         });
         return { frameConfigs, selectedFid: null, selectedEid: null, selectedEids: [] };
       }),

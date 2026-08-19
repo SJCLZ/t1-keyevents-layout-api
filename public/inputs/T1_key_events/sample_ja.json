@@ -1,0 +1,53 @@
+{
+  "template": "key_events",
+  "period": {
+    "start": "2026-08-03",
+    "end": "2026-08-07"
+  },
+  "outro_url": "startrader.com",
+  "disclaimer_l2": "",
+  "languages": [
+    "ja"
+  ],
+  "header_title": "今週の重要イベント",
+  "intro_title_l1": "今週の",
+  "intro_title_l2": "重要",
+  "intro_title_l3": "イベント",
+  "outro_headline_l1": "最新の更新情報をお届けします。",
+  "outro_headline_l2": "市場の動きをお見逃しなく。",
+  "outro_subline_l1": "詳細については、",
+  "outro_subline_l2": "ソーシャルメディアでフォローしてください。",
+  "disclaimer_l1": "CFD（差金決済取引）の取引は高いリスクを伴います。",
+  "events": [
+    {
+      "date": "2026-08-03",
+      "currency": "USD",
+      "impact": "high",
+      "body": "米国のISM製造業PMIは、6月の53.3から7月には54.0へ上昇する見込みです。"
+    },
+    {
+      "date": "2026-08-04",
+      "currency": "USD",
+      "impact": "high",
+      "body": "米国のJOLTS求人件数は、5月の759万件から6月には742万件へ小幅に減少する見込みです。"
+    },
+    {
+      "date": "2026-08-05",
+      "currency": "AUD",
+      "impact": "medium",
+      "body": "オーストラリアの失業率は、5.3%から5.4%へ小幅に上昇する見通しです。"
+    },
+    {
+      "date": "2026-08-06",
+      "currency": "USD",
+      "impact": "high",
+      "body": "米国の週間新規失業保険申請件数は、前週の19.7万件から20.5万件へ増加する見込みです。"
+    },
+    {
+      "date": "2026-08-07",
+      "currency": "USD",
+      "impact": "high",
+      "body": "投資家はFRBの次の動きを見極めるため、米国の非農業部門雇用者数を注視します。"
+    }
+  ]
+}

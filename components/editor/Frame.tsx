@@ -54,9 +54,9 @@ export default function Frame({ fid, showingRef }: Props) {
   const snapGuides = useEditor((s) => s.snapGuides?.fid === fid ? s.snapGuides : null);
   const showingGuides = useEditor((s) => s.showingGuides);
   const [refFailed, setRefFailed] = useState(false);
-  // 原版对比图与语言、帧一一对应，优先使用项目内资源，不依赖外部 URL。
+  // 原版对比图与语言、帧一一对应，统一通过数据库资源 API 读取。
   const refFramePath = REF_FRAME_FILES[fid]
-    ? `/assets/${lang}/gt_frames/${REF_FRAME_FILES[fid]}`
+    ? `/api/assets/gt_frame/${lang}/${REF_FRAME_FILES[fid]}`
     : layout?.frames?.[fid]?.gt_frame_path;
 
   useEffect(() => {

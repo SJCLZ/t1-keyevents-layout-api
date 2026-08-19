@@ -17,6 +17,17 @@ function containsTbdPlaceholder(layout: any): boolean {
   );
 }
 
+function inputContentSignature(input: ExcelInputContent): string {
+  // Bump this version whenever derived fields (for example locale date labels) change.
+  const source = JSON.stringify({ mappingVersion: 2, input });
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `t1-${(hash >>> 0).toString(16)}`;
+}
+
 function ensureDisclaimerElements(layout: any, language: string): any {
   const text = getOfficialPictureRiskWarning(language);
   if (!text) return layout;
@@ -55,11 +66,13 @@ export default function EditorPage() {
   const setLangs = useEditor((s) => s.setLangs);
   const loadLayout = useEditor((s) => s.loadLayout);
   const setSha = useEditor((s) => s.setSha);
+  const setInputSignature = useEditor((s) => s.setInputSignature);
   const setStatus = useEditor((s) => s.setStatus);
   const frameConfigs = useEditor((s) => s.frameConfigs);
   const applyInputContent = useEditor((s) => s.applyInputContent);
 
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [syncingEnglishStyle, setSyncingEnglishStyle] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef<string>('');
   const pendingExcel = useRef<{ fileName: string; input: ExcelInputContent } | null>(null);
@@ -81,6 +94,12 @@ export default function EditorPage() {
     ])
       .then(([{ d, etag }, bundledInput]) => {
         if (abort) return;
+        const bundledSignature = bundledInput ? inputContentSignature(bundledInput) : '';
+        const shouldApplyBundled = Boolean(
+          bundledInput
+          && bundledInput.language === lang
+          && (containsTbdPlaceholder(d) || d._input_signature !== bundledSignature),
+        );
         // Keep the pre-hydration snapshot so newly added disclaimer elements are auto-saved.
         const loadedFrameConfigs = Object.fromEntries(
           Object.entries(d.frames || {}).map(([fid, frame]: [string, any]) => [
@@ -88,24 +107,30 @@ export default function EditorPage() {
             { elements: JSON.parse(JSON.stringify(frame.elements || {})) },
           ]),
         );
-        lastSaved.current = JSON.stringify(loadedFrameConfigs);
+        lastSaved.current = JSON.stringify({ frames: loadedFrameConfigs, inputSignature: d._input_signature || '' });
         const hydratedLayout = ensureDisclaimerElements(d, lang);
+        if (shouldApplyBundled) {
+          hydratedLayout._input_signature = bundledSignature;
+          hydratedLayout._placeholder = false;
+          delete hydratedLayout._note;
+        }
         loadLayout(hydratedLayout, etag.replace(/^"|"$/g, ''));
         const pending = pendingExcel.current;
         if (pending && pending.input.language === lang) {
+          setInputSignature(inputContentSignature(pending.input));
           applyInputContent(pending.input);
           pendingExcel.current = null;
           setStatus(`✅ 已导入 ${pending.fileName}，编辑器已显示 Excel 内容`);
-        } else if (bundledInput && bundledInput.language === lang && containsTbdPlaceholder(hydratedLayout)) {
+        } else if (bundledInput && shouldApplyBundled) {
           applyInputContent(bundledInput);
-          setStatus(`✅ 已用 ${lang.toUpperCase()} 输入内容替换旧 TBD 测试文字`);
+          setStatus(`✅ 已将 ${lang.toUpperCase()} 输入内容完整映射到模板`);
         } else {
           setStatus(`✅ 已加载 ${d.name || lang}`);
         }
       })
       .catch((e) => !abort && setStatus(`❌ 加载失败: HTTP ${e}`));
     return () => { abort = true; };
-  }, [applyInputContent, lang, loadLayout, setStatus]);
+  }, [applyInputContent, lang, loadLayout, setInputSignature, setStatus]);
 
   const importExcel = async (file: File) => {
     try {
@@ -120,6 +145,7 @@ export default function EditorPage() {
         setLang(input.language);
         return;
       }
+      setInputSignature(inputContentSignature(input));
       applyInputContent(input);
       setStatus(`✅ 已导入 ${file.name}，编辑器已显示 Excel 内容`);
     } catch (error: any) {
@@ -129,11 +155,63 @@ export default function EditorPage() {
     }
   };
 
+  const syncEnglishStyle = async () => {
+    if (lang !== 'en' || !layout || syncingEnglishStyle) return;
+    if (!window.confirm('将用当前 EN 的位置、尺寸和字体样式覆盖其他非阿拉伯语模板。各语言文字内容会保留，是否继续？')) return;
+
+    setSyncingEnglishStyle(true);
+    setSavingState('saving');
+    setStatus('正在保存 EN 并同步样式…');
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+
+    try {
+      const body = JSON.parse(JSON.stringify(layout));
+      body.frames = Object.fromEntries(
+        Object.entries(frameConfigs).map(([fid, fc]) => [fid, { ...layout.frames[fid], elements: fc.elements }]),
+      );
+      const currentHash = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
+      const saveResponse = await fetch('/api/layouts/en', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'If-Match': sha ? `"${sha}"` : '',
+        },
+        body: JSON.stringify({ message: 'Save EN before style sync', data: body }),
+      });
+      if (!saveResponse.ok) {
+        const error = await saveResponse.json();
+        throw new Error(error.error || `保存 EN 失败 (${saveResponse.status})`);
+      }
+      const saved = await saveResponse.json();
+      setSha(saved.sha);
+      lastSaved.current = currentHash;
+
+      const syncResponse = await fetch('/api/layouts/sync-en-style', { method: 'POST' });
+      const result = await syncResponse.json();
+      if (!syncResponse.ok) throw new Error(result.error || `同步失败 (${syncResponse.status})`);
+
+      const updated = result.updated || [];
+      const failed = result.failed || [];
+      if (failed.length > 0) {
+        setSavingState('error');
+        setStatus(`⚠️ 已同步 ${updated.join(', ').toUpperCase()}；失败: ${failed.map((item: any) => item.lang.toUpperCase()).join(', ')}`);
+      } else {
+        setSavingState('saved');
+        setStatus(`✅ 英文样式已同步到 ${updated.map((item: string) => item.toUpperCase()).join(', ')}（AR 保持独立）`);
+      }
+    } catch (error: any) {
+      setSavingState('error');
+      setStatus(`❌ 同步英文样式失败: ${error?.message || String(error)}`);
+    } finally {
+      setSyncingEnglishStyle(false);
+    }
+  };
+
   // 自动保存:frameConfigs 变化后 2 秒触发 PUT
   useEffect(() => {
     if (!layout) return;
     // 计算当前 frameConfigs 的 hash(用 JSON.stringify 简化)
-    const cur = JSON.stringify(frameConfigs);
+    const cur = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
     if (cur === lastSaved.current) return;  // 没变化
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -221,7 +299,15 @@ export default function EditorPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <Toolbar lang={lang} langs={langs} onLangChange={setLang} onExcelFile={importExcel} savingState={savingState} />
+      <Toolbar
+        lang={lang}
+        langs={langs}
+        onLangChange={setLang}
+        onExcelFile={importExcel}
+        onSyncEnglishStyle={syncEnglishStyle}
+        syncingEnglishStyle={syncingEnglishStyle}
+        savingState={savingState}
+      />
       {status && (
         <div className="px-5 py-1.5 text-xs bg-gray-100 border-b border-gray-200 text-gray-600">
           {status}

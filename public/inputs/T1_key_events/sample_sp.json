@@ -1,0 +1,53 @@
+{
+  "template": "key_events",
+  "period": {
+    "start": "2026-08-03",
+    "end": "2026-08-07"
+  },
+  "outro_url": "startrader.com",
+  "disclaimer_l2": "",
+  "languages": [
+    "sp"
+  ],
+  "header_title": "Eventos Clave del Mercado",
+  "intro_title_l1": "Eventos",
+  "intro_title_l2": "Clave",
+  "intro_title_l3": "del Mercado",
+  "outro_headline_l1": "Sigue las últimas actualizaciones.",
+  "outro_headline_l2": "No te pierdas los movimientos del mercado.",
+  "outro_subline_l1": "Para más detalles,",
+  "outro_subline_l2": "síguenos en las redes sociales.",
+  "disclaimer_l1": "La negociación de Contratos por Diferencia (CFDs) conlleva un alto nivel de riesgo.",
+  "events": [
+    {
+      "date": "2026-08-03",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Se espera que el PMI manufacturero ISM de EE. UU. suba de 53,3 en junio a 54,0 en julio."
+    },
+    {
+      "date": "2026-08-04",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Se espera que las ofertas de empleo JOLTS de EE. UU. bajen ligeramente de 7,59 millones en mayo a 7,42 millones en junio."
+    },
+    {
+      "date": "2026-08-05",
+      "currency": "AUD",
+      "impact": "medium",
+      "body": "Se prevé que la tasa de desempleo de Australia aumente ligeramente del 5,3 % al 5,4 %."
+    },
+    {
+      "date": "2026-08-06",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Se espera que las solicitudes semanales de subsidio por desempleo en EE. UU. aumenten de 197.000 a 205.000."
+    },
+    {
+      "date": "2026-08-07",
+      "currency": "USD",
+      "impact": "high",
+      "body": "Los inversores seguirán de cerca las nóminas no agrícolas de EE. UU. para evaluar el próximo movimiento de la Fed."
+    }
+  ]
+}
