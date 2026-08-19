@@ -33,3 +33,26 @@ export function getOfficialPictureRiskWarning(language: string): string {
 export function getOfficialPictureRiskWarningL2(language: string): string {
   return OFFICIAL_PICTURE_RISK_WARNING_L2[language] || '';
 }
+
+export function normalizeOfficialPictureRiskWarningLines(
+  language: string,
+  line1?: string,
+  line2?: string,
+): { line1: string; line2: string } {
+  const officialLine1 = getOfficialPictureRiskWarning(language);
+  const officialLine2 = getOfficialPictureRiskWarningL2(language);
+  if (!officialLine1) return { line1: line1 || '', line2: line2 || '' };
+
+  const currentLine1 = line1 || '';
+  const currentLine2 = line2 || '';
+  const compact = (value: string) => value.replace(/\s+/g, '');
+  const currentCombined = compact(`${currentLine1}${currentLine2}`);
+  const officialCombined = compact(`${officialLine1}${officialLine2}`);
+
+  // Normalize only the approved sentence (whether stored in one field or
+  // already split). Preserve genuinely custom disclaimer copy unchanged.
+  if (!currentCombined || currentCombined === officialCombined) {
+    return { line1: officialLine1, line2: officialLine2 };
+  }
+  return { line1: currentLine1, line2: currentLine2 };
+}

@@ -7,7 +7,10 @@ import AlignToolbar from '@/components/editor/AlignToolbar';
 import PropertyPanel from '@/components/editor/PropertyPanel';
 import { useEditor } from '@/lib/store';
 import { parseKeyEventsExcel, parseKeyEventsJson, type ExcelInputContent } from '@/lib/excelImport';
-import { getOfficialPictureRiskWarning, getOfficialPictureRiskWarningL2 } from '@/lib/riskWarnings';
+import {
+  getOfficialPictureRiskWarning,
+  normalizeOfficialPictureRiskWarningLines,
+} from '@/lib/riskWarnings';
 
 function containsTbdPlaceholder(layout: any): boolean {
   return Object.values(layout?.frames || {}).some((frame: any) =>
@@ -30,7 +33,6 @@ function inputContentSignature(input: ExcelInputContent): string {
 
 function ensureDisclaimerElements(layout: any, language: string): any {
   const text = getOfficialPictureRiskWarning(language);
-  const textL2 = getOfficialPictureRiskWarningL2(language);
   if (!text) return layout;
   const textAlign = language === 'ar' ? 'right' : 'left';
   Object.values(layout?.frames || {}).forEach((frame: any) => {
@@ -38,17 +40,22 @@ function ensureDisclaimerElements(layout: any, language: string): any {
     if (!elements) return;
     const existingL1 = elements.disclaimer_l1 || elements.disclaimer || elements.disclaimer1;
     const existingL2 = elements.disclaimer_l2 || elements.disclaimer2;
+    const normalized = normalizeOfficialPictureRiskWarningLines(
+      language,
+      existingL1?.text,
+      existingL2?.text,
+    );
     elements.disclaimer_l1 = {
       x: 152, y: 1588, w: 776, h: 26, type: 'disclaimer',
       fontSize: 18, fontWeight: 300, line_pitch: 22, textAlign,
       ...(existingL1 || {}),
-      text: existingL1?.text || text,
+      text: normalized.line1,
     };
     elements.disclaimer_l2 = {
       x: 152, y: 1610, w: 776, h: 26, type: 'disclaimer',
       fontSize: 18, fontWeight: 300, line_pitch: 22, textAlign,
       ...(existingL2 || {}),
-      text: existingL2?.text || textL2,
+      text: normalized.line2,
     };
     delete elements.disclaimer;
     delete elements.disclaimer1;
