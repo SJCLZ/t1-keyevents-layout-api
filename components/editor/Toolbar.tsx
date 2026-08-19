@@ -12,16 +12,18 @@ interface Props {
   lang: string;
   langs: string[];
   onLangChange: (l: string) => void;
+  onSave: () => Promise<void>;
   onExcelFile: (file: File) => Promise<void>;
   onSyncEnglishStyle: () => Promise<void>;
   syncingEnglishStyle: boolean;
-  savingState: 'idle' | 'saving' | 'saved' | 'error';
+  savingState: 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 }
 
 export default function Toolbar({
   lang,
   langs,
   onLangChange,
+  onSave,
   onExcelFile,
   onSyncEnglishStyle,
   syncingEnglishStyle,
@@ -89,6 +91,16 @@ export default function Toolbar({
       </button>
 
       <div className="w-px h-6 bg-gray-200 mx-1" />
+
+      <button
+        type="button"
+        onClick={() => void onSave()}
+        disabled={!['dirty', 'error'].includes(savingState)}
+        className="px-3 py-1.5 text-sm rounded-md border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 disabled:border-gray-300 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed"
+        title="保存当前模板（Ctrl/⌘ + S）"
+      >
+        {savingState === 'saving' ? '保存中…' : '💾 保存'}
+      </button>
 
       <input
         ref={excelInputRef}
@@ -171,6 +183,7 @@ export default function Toolbar({
           </span>
         )}
         <span className="text-xs text-gray-500">
+          {savingState === 'dirty' && '● 有未保存修改'}
           {savingState === 'saving' && '⏳ 保存中…'}
           {savingState === 'saved' && '✓ 已保存'}
           {savingState === 'error' && '✗ 保存失败'}

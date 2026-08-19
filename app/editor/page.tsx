@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Toolbar from '@/components/editor/Toolbar';
 import Canvas from '@/components/editor/Canvas';
 import AlignToolbar from '@/components/editor/AlignToolbar';
@@ -122,9 +122,8 @@ export default function EditorPage() {
   const frameConfigs = useEditor((s) => s.frameConfigs);
   const applyInputContent = useEditor((s) => s.applyInputContent);
 
-  const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [savingState, setSavingState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle');
   const [syncingEnglishStyle, setSyncingEnglishStyle] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaved = useRef<string>('');
   const pendingExcel = useRef<{ fileName: string; input: ExcelInputContent } | null>(null);
 
@@ -194,8 +193,12 @@ export default function EditorPage() {
         throw new Error(`Excel 语言 ${input.language} 不在当前模板列表中`);
       }
       if (input.language !== lang) {
+        if (['dirty', 'error'].includes(savingState)
+          && !window.confirm('当前模板有未保存修改。导入其他语言将放弃这些修改，是否继续？')) return;
         pendingExcel.current = { fileName: file.name, input };
         setStatus(`Excel 语言为 ${input.language}，正在切换模板…`);
+        setSavingState('idle');
+        lastSaved.current = '';
         setLang(input.language);
         return;
       }
@@ -216,7 +219,6 @@ export default function EditorPage() {
     setSyncingEnglishStyle(true);
     setSavingState('saving');
     setStatus('正在保存 EN 并同步样式…');
-    if (saveTimer.current) clearTimeout(saveTimer.current);
 
     try {
       const body = JSON.parse(JSON.stringify(layout));
@@ -254,49 +256,75 @@ export default function EditorPage() {
     }
   };
 
-  // 自动保存:frameConfigs 变化后 2 秒触发 PUT
-  useEffect(() => {
-    if (!layout) return;
-    // 计算当前 frameConfigs 的 hash(用 JSON.stringify 简化)
-    const cur = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
-    if (cur === lastSaved.current) return;  // 没变化
+  const saveCurrentLayout = useCallback(async () => {
+    if (!layout || savingState === 'saving') return;
+    const currentHash = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
+    if (currentHash === lastSaved.current) {
+      setSavingState('saved');
+      return;
+    }
 
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    const controller = new AbortController();
-    saveTimer.current = setTimeout(async () => {
-      setSavingState('saving');
-      try {
-        const body = JSON.parse(JSON.stringify(layout));
-        body.frames = Object.fromEntries(
-          // 使用当前 effect 捕获的快照，不读取切换语言后的全局 store。
-          Object.entries(frameConfigs).map(([fid, fc]) => [fid, { ...layout.frames[fid], elements: fc.elements }]),
-        );
-        const saved = await saveLayoutWithConflictRecovery({
-          lang,
-          sha,
-          message: `Update ${lang} via editor`,
-          data: body,
-          signal: controller.signal,
-        });
-        setSha(saved.sha);  // v52+:更新 store 里的 sha,避免下次 auto-save 用 stale 值 → 409
-        lastSaved.current = cur;
+    setSavingState('saving');
+    setStatus(`正在保存 ${lang.toUpperCase()} 模板…`);
+    try {
+      const body = JSON.parse(JSON.stringify(layout));
+      body.frames = Object.fromEntries(
+        Object.entries(frameConfigs).map(([fid, fc]) => [fid, { ...layout.frames[fid], elements: fc.elements }]),
+      );
+      const saved = await saveLayoutWithConflictRecovery({
+        lang,
+        sha,
+        message: `Update ${lang} via editor`,
+        data: body,
+      });
+      setSha(saved.sha);
+      lastSaved.current = currentHash;
+
+      const latest = useEditor.getState();
+      const latestHash = JSON.stringify({
+        frames: latest.frameConfigs,
+        inputSignature: latest.layout?._input_signature || '',
+      });
+      if (latestHash !== currentHash) {
+        setSavingState('dirty');
+        setStatus('✅ 已保存；保存过程中产生的新修改仍未保存');
+      } else {
+        setSavingState('saved');
         setStatus(saved.recovered
           ? `✅ 检测到服务器更新，已刷新版本并保存当前编辑 ${new Date().toLocaleTimeString()}`
           : `✅ 已保存 ${new Date().toLocaleTimeString()}`);
-        setSavingState('saved');
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return;
-        setStatus(`❌ ${e.message}`);
-        setSavingState('error');
       }
-    }, 2000);
+    } catch (error: any) {
+      setSavingState('error');
+      setStatus(`❌ 保存失败: ${error?.message || String(error)}`);
+    }
+  }, [frameConfigs, lang, layout, savingState, setSha, setStatus, sha]);
 
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      controller.abort();
+  // 手动保存模式：内容变化时仅标记为未保存，不写入数据库。
+  useEffect(() => {
+    if (!layout) return;
+    const cur = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
+    if (cur !== lastSaved.current && ['idle', 'saved'].includes(savingState)) setSavingState('dirty');
+  }, [frameConfigs, layout, savingState]);
+
+  const changeLanguage = useCallback((nextLang: string) => {
+    if (nextLang === lang || savingState === 'saving') return;
+    if (['dirty', 'error'].includes(savingState)
+      && !window.confirm('当前模板有未保存修改。切换语言将放弃这些修改，是否继续？')) return;
+    setSavingState('idle');
+    lastSaved.current = '';
+    setLang(nextLang);
+  }, [lang, savingState, setLang]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!['dirty', 'error'].includes(savingState)) return;
+      event.preventDefault();
+      event.returnValue = '';
     };
-    // v52+:从 deps 移除 sha(避免 sha 更新后再触发 useEffect → 死循环)
-  }, [frameConfigs, lang, layout, setSha, setStatus]);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [savingState]);
 
   // 键盘快捷键(Ctrl+Z 撤销,Esc 取消选择)
   useEffect(() => {
@@ -311,6 +339,11 @@ export default function EditorPage() {
       }
       // 编辑相关快捷键只在非输入框生效
       if (isInput) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void saveCurrentLayout();
+        return;
+      }
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
         const step = e.shiftKey ? 10 : 1;
         const delta = {
@@ -335,14 +368,15 @@ export default function EditorPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [saveCurrentLayout]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <Toolbar
         lang={lang}
         langs={langs}
-        onLangChange={setLang}
+        onLangChange={changeLanguage}
+        onSave={saveCurrentLayout}
         onExcelFile={importExcel}
         onSyncEnglishStyle={syncEnglishStyle}
         syncingEnglishStyle={syncingEnglishStyle}
