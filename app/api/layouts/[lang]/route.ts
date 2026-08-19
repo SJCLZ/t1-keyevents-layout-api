@@ -21,6 +21,7 @@ export async function GET(
     return NextResponse.json(row.data, {
       headers: {
         ETag: `"${row.sha}"`,
+        'X-Layout-Sha': row.sha,
         'Cache-Control': 'no-store, max-age=0',
       },
     });

@@ -87,7 +87,10 @@ export default function EditorPage() {
     }).catch(() => {});
     Promise.all([
       fetch(`/api/layouts/${lang}`)
-        .then((r) => r.ok ? r.json().then((d) => ({ d, etag: r.headers.get('etag') || '' })) : Promise.reject(r.status)),
+        .then((r) => r.ok ? r.json().then((d) => ({
+          d,
+          etag: r.headers.get('x-layout-sha') || r.headers.get('etag') || '',
+        })) : Promise.reject(r.status)),
       fetch(`/inputs/T1_key_events/sample_${lang}.json`, { cache: 'no-store' })
         .then(async (r) => r.ok ? parseKeyEventsJson(await r.json()) : null)
         .catch(() => null),
