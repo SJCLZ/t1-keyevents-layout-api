@@ -5,7 +5,7 @@
     "end": "2026-08-07"
   },
   "outro_url": "startrader.com",
-  "disclaimer_l2": "",
+  "disclaimer_l2": "conlleva un alto nivel de riesgo.",
   "languages": [
     "sp"
   ],
@@ -17,7 +17,7 @@
   "outro_headline_l2": "No te pierdas los movimientos del mercado.",
   "outro_subline_l1": "Para más detalles,",
   "outro_subline_l2": "síguenos en las redes sociales.",
-  "disclaimer_l1": "La negociación de Contratos por Diferencia (CFDs) conlleva un alto nivel de riesgo.",
+  "disclaimer_l1": "La negociación de Contratos por Diferencia (CFDs)",
   "events": [
     {
       "date": "2026-08-03",

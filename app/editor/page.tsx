@@ -7,7 +7,7 @@ import AlignToolbar from '@/components/editor/AlignToolbar';
 import PropertyPanel from '@/components/editor/PropertyPanel';
 import { useEditor } from '@/lib/store';
 import { parseKeyEventsExcel, parseKeyEventsJson, type ExcelInputContent } from '@/lib/excelImport';
-import { getOfficialPictureRiskWarning } from '@/lib/riskWarnings';
+import { getOfficialPictureRiskWarning, getOfficialPictureRiskWarningL2 } from '@/lib/riskWarnings';
 
 function containsTbdPlaceholder(layout: any): boolean {
   return Object.values(layout?.frames || {}).some((frame: any) =>
@@ -30,6 +30,7 @@ function inputContentSignature(input: ExcelInputContent): string {
 
 function ensureDisclaimerElements(layout: any, language: string): any {
   const text = getOfficialPictureRiskWarning(language);
+  const textL2 = getOfficialPictureRiskWarningL2(language);
   if (!text) return layout;
   const textAlign = language === 'ar' ? 'right' : 'left';
   Object.values(layout?.frames || {}).forEach((frame: any) => {
@@ -47,7 +48,7 @@ function ensureDisclaimerElements(layout: any, language: string): any {
       x: 152, y: 1610, w: 776, h: 26, type: 'disclaimer',
       fontSize: 18, fontWeight: 300, line_pitch: 22, textAlign,
       ...(existingL2 || {}),
-      text: existingL2?.text || '',
+      text: existingL2?.text || textL2,
     };
     delete elements.disclaimer;
     delete elements.disclaimer1;

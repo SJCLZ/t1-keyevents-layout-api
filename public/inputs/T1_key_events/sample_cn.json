@@ -5,7 +5,7 @@
     "end": "2026-08-07"
   },
   "outro_url": "startrader.com",
-  "disclaimer_l2": "",
+  "disclaimer_l2": "具有高风险。",
   "languages": [
     "cn"
   ],
@@ -17,7 +17,7 @@
   "outro_headline_l2": "不要错过市场动向。",
   "outro_subline_l1": "了解更多详情,",
   "outro_subline_l2": "请关注我们的社交媒体。",
-  "disclaimer_l1": "差价合约（CFDs）交易具有高风险。",
+  "disclaimer_l1": "差价合约（CFDs）交易",
   "events": [
     {
       "date": "2026-08-03",

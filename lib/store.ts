@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { temporal } from 'zundo';
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 import type { ExcelInputContent } from './excelImport';
-import { getOfficialPictureRiskWarning } from './riskWarnings';
+import { getOfficialPictureRiskWarning, getOfficialPictureRiskWarningL2 } from './riskWarnings';
 
 export interface EditorElement {
   x: number; y: number; w: number; h: number; type: string;
@@ -343,8 +343,8 @@ export const useEditor = create<EditorState>()(
         updateText('t042', 'subline2', input.outroSublineL2);
         updateText('t042', 'url', input.outroUrl);
         Object.keys(frameConfigs).forEach((fid) => {
-          updateText(fid, 'disclaimer_l1', getOfficialPictureRiskWarning(s.lang));
-          updateText(fid, 'disclaimer_l2', '');
+          updateText(fid, 'disclaimer_l1', input.disclaimerL1 || getOfficialPictureRiskWarning(s.lang));
+          updateText(fid, 'disclaimer_l2', input.disclaimerL2 || getOfficialPictureRiskWarningL2(s.lang));
         });
         return { frameConfigs, selectedFid: null, selectedEid: null, selectedEids: [] };
       }),

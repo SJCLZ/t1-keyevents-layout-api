@@ -5,7 +5,7 @@
     "end": "2026-08-07"
   },
   "outro_url": "startrader.com",
-  "disclaimer_l2": "",
+  "disclaimer_l2": "高いリスクを伴います。",
   "languages": [
     "ja"
   ],
@@ -17,7 +17,7 @@
   "outro_headline_l2": "市場の動きをお見逃しなく。",
   "outro_subline_l1": "詳細については、",
   "outro_subline_l2": "ソーシャルメディアでフォローしてください。",
-  "disclaimer_l1": "CFD（差金決済取引）の取引は高いリスクを伴います。",
+  "disclaimer_l1": "CFD（差金決済取引）の取引は",
   "events": [
     {
       "date": "2026-08-03",

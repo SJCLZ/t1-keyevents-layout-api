@@ -5,7 +5,7 @@
     "end": "2026-08-07"
   },
   "outro_url": "startrader.com",
-  "disclaimer_l2": "",
+  "disclaimer_l2": "على مخاطر عالية.",
   "languages": [
     "ar"
   ],
@@ -17,7 +17,7 @@
   "outro_headline_l2": "ابق في المقدمة.",
   "outro_subline_l1": "لمزيد من التفاصيل،",
   "outro_subline_l2": "تابعنا على وسائل التواصل الاجتماعي.",
-  "disclaimer_l1": "ينطوي تداول عقود الفروقات (CFDs) على مخاطر عالية.",
+  "disclaimer_l1": "ينطوي تداول عقود الفروقات (CFDs)",
   "events": [
     {
       "date": "2026-08-03",

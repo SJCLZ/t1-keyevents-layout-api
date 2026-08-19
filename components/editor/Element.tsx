@@ -236,6 +236,7 @@ export default function Element({ fid, eid, element, lang }: Props) {
   }
 
   const color = element.type === 'date' || element.type === 'subtitle' ? '#6590D7' : '#fff';
+  const isDisclaimer = eid === 'disclaimer_l1' || eid === 'disclaimer_l2';
   const fontSize = (element.fontSize || 50) * SCALE;
   const textAlign = element.textAlign ?? (lang === 'ar' ? 'right' : 'left');
   const lineHeight = element.line_pitch && element.fontSize
@@ -266,7 +267,11 @@ export default function Element({ fid, eid, element, lang }: Props) {
         lineHeight,
       }}
     >
-      <span ref={textRef} className="block w-full" style={{ textAlign }}>
+      <span
+        ref={textRef}
+        className="block w-full"
+        style={{ textAlign, whiteSpace: isDisclaimer ? 'nowrap' : undefined }}
+      >
         {element.text || ''}
       </span>
       {isSelected && <SelectionHandles onResize={onResizeStart} />}
