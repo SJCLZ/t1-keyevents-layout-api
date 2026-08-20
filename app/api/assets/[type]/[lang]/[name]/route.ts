@@ -4,6 +4,16 @@ import { getAsset, isConfigured, ensureSchema } from '@/lib/db';
 // 资源内容会更新，不使用静态路由缓存。
 export const dynamic = 'force-dynamic';
 
+const CROSS_ORIGIN_ASSET_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CROSS_ORIGIN_ASSET_HEADERS });
+}
+
 function streamBuffer(data: Buffer): ReadableStream<Uint8Array> {
   const chunkSize = 64 * 1024;
   let offset = 0;
@@ -43,6 +53,7 @@ export async function GET(
           'Cache-Control': 'public, max-age=3600',
           'ETag': `"${asset.sha}"`,
           'X-Asset-Source': 'database',
+          ...CROSS_ORIGIN_ASSET_HEADERS,
         },
       });
     }
