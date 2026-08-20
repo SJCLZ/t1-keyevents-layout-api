@@ -235,10 +235,9 @@ export default function Element({ fid, eid, element, lang }: Props) {
     );
   }
 
-  const isArabicOutroSubline = lang === 'ar'
-    && fid === 't042'
+  const isOutroSubline = fid === 't042'
     && (eid === 'subline1' || eid === 'subline2');
-  const color = element.type === 'date' || element.type === 'subtitle' || isArabicOutroSubline
+  const color = element.type === 'date' || element.type === 'subtitle' || isOutroSubline
     ? '#6590D7'
     : '#fff';
   const isDisclaimer = eid === 'disclaimer_l1' || eid === 'disclaimer_l2';
