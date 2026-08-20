@@ -235,7 +235,12 @@ export default function Element({ fid, eid, element, lang }: Props) {
     );
   }
 
-  const color = element.type === 'date' || element.type === 'subtitle' ? '#6590D7' : '#fff';
+  const isArabicOutroSubline = lang === 'ar'
+    && fid === 't042'
+    && (eid === 'subline1' || eid === 'subline2');
+  const color = element.type === 'date' || element.type === 'subtitle' || isArabicOutroSubline
+    ? '#6590D7'
+    : '#fff';
   const isDisclaimer = eid === 'disclaimer_l1' || eid === 'disclaimer_l2';
   const fontSize = (element.fontSize || 50) * SCALE;
   const textAlign = element.textAlign ?? (lang === 'ar' ? 'right' : 'left');
