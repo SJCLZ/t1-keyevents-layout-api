@@ -14,8 +14,6 @@ interface Props {
   onLangChange: (l: string) => void;
   onSave: () => Promise<void>;
   onExcelFile: (file: File) => Promise<void>;
-  onSyncEnglishStyle: () => Promise<void>;
-  syncingEnglishStyle: boolean;
   savingState: 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 }
 
@@ -25,8 +23,6 @@ export default function Toolbar({
   onLangChange,
   onSave,
   onExcelFile,
-  onSyncEnglishStyle,
-  syncingEnglishStyle,
   savingState,
 }: Props) {
   const showingRef = useEditor((s) => s.showingRef);
@@ -117,16 +113,6 @@ export default function Toolbar({
         title="导入 T1_KeyEvents Excel，用表格内容替换编辑器文字"
       >
         {importingExcel ? '正在读取…' : '📊 导入 Excel'}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => void onSyncEnglishStyle()}
-        disabled={lang !== 'en' || syncingEnglishStyle}
-        className="px-3 py-1.5 text-sm rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed"
-        title={lang === 'en' ? '将 EN 的位置、尺寸和文字样式同步到所有非阿拉伯语模板' : '请先切换到 EN 模板'}
-      >
-        {syncingEnglishStyle ? '正在同步…' : '🔄 同步英文样式'}
       </button>
 
       <div className="w-px h-6 bg-gray-200 mx-1" />

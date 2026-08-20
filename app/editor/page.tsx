@@ -130,7 +130,6 @@ export default function EditorPage() {
   const applyInputContent = useEditor((s) => s.applyInputContent);
 
   const [savingState, setSavingState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle');
-  const [syncingEnglishStyle, setSyncingEnglishStyle] = useState(false);
   const lastSaved = useRef<string>('');
   const pendingExcel = useRef<{ fileName: string; input: ExcelInputContent } | null>(null);
 
@@ -216,50 +215,6 @@ export default function EditorPage() {
       pendingExcel.current = null;
       setStatus(`❌ Excel 导入失败: ${error?.message || String(error)}`);
       throw error;
-    }
-  };
-
-  const syncEnglishStyle = async () => {
-    if (lang !== 'en' || !layout || syncingEnglishStyle) return;
-    if (!window.confirm('将用当前 EN 的位置、尺寸和字体样式覆盖其他非阿拉伯语模板。各语言文字内容会保留，是否继续？')) return;
-
-    setSyncingEnglishStyle(true);
-    setSavingState('saving');
-    setStatus('正在保存 EN 并同步样式…');
-
-    try {
-      const body = JSON.parse(JSON.stringify(layout));
-      body.frames = Object.fromEntries(
-        Object.entries(frameConfigs).map(([fid, fc]) => [fid, { ...layout.frames[fid], elements: fc.elements }]),
-      );
-      const currentHash = JSON.stringify({ frames: frameConfigs, inputSignature: layout._input_signature || '' });
-      const saved = await saveLayoutWithConflictRecovery({
-        lang: 'en',
-        sha,
-        message: 'Save EN before style sync',
-        data: body,
-      });
-      setSha(saved.sha);
-      lastSaved.current = currentHash;
-
-      const syncResponse = await fetch('/api/layouts/sync-en-style', { method: 'POST' });
-      const result = await syncResponse.json();
-      if (!syncResponse.ok) throw new Error(result.error || `同步失败 (${syncResponse.status})`);
-
-      const updated = result.updated || [];
-      const failed = result.failed || [];
-      if (failed.length > 0) {
-        setSavingState('error');
-        setStatus(`⚠️ 已同步 ${updated.join(', ').toUpperCase()}；失败: ${failed.map((item: any) => item.lang.toUpperCase()).join(', ')}`);
-      } else {
-        setSavingState('saved');
-        setStatus(`✅ 英文样式已同步到 ${updated.map((item: string) => item.toUpperCase()).join(', ')}（AR 保持独立）`);
-      }
-    } catch (error: any) {
-      setSavingState('error');
-      setStatus(`❌ 同步英文样式失败: ${error?.message || String(error)}`);
-    } finally {
-      setSyncingEnglishStyle(false);
     }
   };
 
@@ -385,8 +340,6 @@ export default function EditorPage() {
         onLangChange={changeLanguage}
         onSave={saveCurrentLayout}
         onExcelFile={importExcel}
-        onSyncEnglishStyle={syncEnglishStyle}
-        syncingEnglishStyle={syncingEnglishStyle}
         savingState={savingState}
       />
       {status && (
